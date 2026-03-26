@@ -1,0 +1,32 @@
+# 1. Start by ignoring everything
+*
+
+# 2. Global Whitelist
+!*.py
+!*.md
+!*.txt
+!*.json
+!*.yaml
+!*.yml
+!*.toml
+!LICENSE
+!.gitignore
+!requirements.txt
+!.github/
+
+# 3. IGNORE DOWNLOADS (Look like music playlist folders)
+/*[A-Za-z0-9]*/
+
+# 4. OVERRIDE: ALWAYS allow the source code package structure
+!spotdlextended/
+!spotdlextended/**
+
+# 5. FINAL SAFETY IGNORES (These must be at the bottom to stay ignored)
+.venv/
+__pycache__/
+*.pyc
+.pyc
+settings.json
+local_settings.json
+.DS_Store
+Thumbs.db
