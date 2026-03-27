@@ -1,8 +1,15 @@
 import os
+import sys
 import json
 from pathlib import Path
 
-SETTINGS_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, 'frozen', False):
+    # PyInstaller creates a temp folder and stores path in _MEIPASS, returning __file__ in that folder.
+    # To save settings right next to the .exe we use sys.executable
+    SETTINGS_DIR = Path(sys.executable).resolve().parent
+else:
+    SETTINGS_DIR = Path(__file__).resolve().parent.parent
+
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 
 if os.name == 'nt':

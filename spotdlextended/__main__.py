@@ -133,110 +133,122 @@ def main():
     # Convert whatever path is provided into its OS-correct equivalent
     args.dir = translate_path_to_os(args.dir)
 
-    # Prompt for URL if not provided via CLI
-    if not args.url:
-        while True:
+    # We will loop infinitely to allow multiple downloads without the window closing
+    is_first_prompt = True
+    current_url = args.url
+
+    while True:
+        # Prompt for URL if not provided via CLI
+        if not current_url:
             print(f"\n🎵 \033[1mSpotify Playlist (+Extended Mix) Downloader\033[0m: 🎵")
-            print(f"\n   \033[3m--help for more information\033[0m")
-            print(f"\nEnter Spotify Playlist URL:")
+            if is_first_prompt:
+                print(f"\n   \033[3m--help for more information\033[0m")
+                is_first_prompt = False
+                
+            print(f"\nEnter Spotify Playlist URL (or 'q' to quit):")
             user_input = input("> ").strip()
             
             if user_input.lower() in ["help", "--help"]:
                 parser.print_help()
                 continue
+            if user_input.lower() in ['q', 'quit', 'exit']:
+                break
                 
-            args.url = user_input if user_input else DEFAULT_PLAYLIST_URL
-            break
+            current_url = user_input if user_input else DEFAULT_PLAYLIST_URL
 
-    # Setup Spotify Scraper
-    # Using 'selenium' forces the scraper to load the page in a headless browser,
-    # giving the JavaScript time to render the full playlist instead of just the initial chunk.
-    client = SpotifyClient()
-    logging.info(f"Connecting to Spotify Playlist: {args.url}")
-    try:
-        playlist = client.get_playlist_info(args.url)
-    except Exception as e:
-        logging.error(f"Failed to fetch playlist: {e}")
-        return
-    
-    playlist_name = Downloader.sanitize_filename(playlist.get('name', 'My_Playlist'))
-    
-    raw_tracks = playlist.get('tracks', [])
-    logging.info(f"  [ℹ️] Found {len(raw_tracks)} tracks in playlist: '{playlist.get('name', 'Unknown')}'")
-
-    # Extract Title, Artist, and Duration into a structured list
-    tracks = []
-    for t in playlist.get('tracks', []):
-        artist_name = t['artists'][0]['name'] if t.get('artists') else "Unknown"
-        track_name = t.get('name', 'Unknown')
-        duration_ms = t.get('duration_ms', t.get('durationMs', 0))
-        tracks.append({
-            'title': track_name, 
-            'artist': artist_name,
-            'duration_ms': duration_ms
-        })
-
-
-    # Build folder structure
-    playlist_folder = os.path.join(args.dir, playlist_name)
-    
-    for path in [args.dir, playlist_folder]:
-        if not os.path.exists(path):
-            os.makedirs(path)
-            logging.info(f"Created directory: {path}")
-
-    # Remove all existing .nfo error logs in the playlist folder for a clean run
-    for f in os.listdir(playlist_folder):
-        if f.endswith(".nfo"):
-            try:
-                os.remove(os.path.join(playlist_folder, f))
-            except Exception:
-                pass
-
-
-    # Start Batch Process
-    logging.info(f"Starting download of {len(tracks)} tracks...")
-    
-    # Initialize our Downloader class pulling api endpoints from settings 
-    downloader = Downloader(api_endpoints=settings.get("api_endpoints", []))
-    
-    downloaded_filenames = []
-    summary_stats = {}
-    
-    for track_data in tracks:
-        filename, mix_category = downloader.download_track(
-            track_data, 
-            playlist_folder, 
-            args.force, 
-            args.playlist_only,
-            get_extended=get_ext
-        )
+        # Setup Spotify Scraper
+        # Using 'selenium' forces the scraper to load the page in a headless browser,
+        # giving the JavaScript time to render the full playlist instead of just the initial chunk.
+        client = SpotifyClient()
+        logging.info(f"Connecting to Spotify Playlist: {current_url}")
+        try:
+            playlist = client.get_playlist_info(current_url)
+        except Exception as e:
+            logging.error(f"Failed to fetch playlist: {e}")
+            current_url = None
+            continue
         
-        # Only add valid FLACs to playlist, ignoring the text error files
-        if filename and mix_category != "Error":
-            downloaded_filenames.append(filename)
+        playlist_name = Downloader.sanitize_filename(playlist.get('name', 'My_Playlist'))
+        
+        raw_tracks = playlist.get('tracks', [])
+        logging.info(f"  [ℹ️] Found {len(raw_tracks)} tracks in playlist: '{playlist.get('name', 'Unknown')}'")
+
+        # Extract Title, Artist, and Duration into a structured list
+        tracks = []
+        for t in playlist.get('tracks', []):
+            artist_name = t['artists'][0]['name'] if t.get('artists') else "Unknown"
+            track_name = t.get('name', 'Unknown')
+            duration_ms = t.get('duration_ms', t.get('durationMs', 0))
+            tracks.append({
+                'title': track_name, 
+                'artist': artist_name,
+                'duration_ms': duration_ms
+            })
+
+
+        # Build folder structure
+        playlist_folder = os.path.join(args.dir, playlist_name)
+        
+        for path in [args.dir, playlist_folder]:
+            if not os.path.exists(path):
+                os.makedirs(path)
+                logging.info(f"Created directory: {path}")
+
+        # Remove all existing .nfo error logs in the playlist folder for a clean run
+        for f in os.listdir(playlist_folder):
+            if f.endswith(".nfo"):
+                try:
+                    os.remove(os.path.join(playlist_folder, f))
+                except Exception:
+                    pass
+
+
+        # Start Batch Process
+        logging.info(f"Starting download of {len(tracks)} tracks...")
+        
+        # Initialize our Downloader class pulling api endpoints from settings 
+        downloader = Downloader(api_endpoints=settings.get("api_endpoints", []))
+        
+        downloaded_filenames = []
+        summary_stats = {}
+        
+        for track_data in tracks:
+            filename, mix_category = downloader.download_track(
+                track_data, 
+                playlist_folder, 
+                args.force, 
+                args.playlist_only,
+                get_extended=get_ext
+            )
             
-        summary_stats[mix_category] = summary_stats.get(mix_category, 0) + 1
-    
-    # Final Step: Create M3U8 Playlist
-    if downloaded_filenames:
-        create_m3u8_playlist(args.dir, playlist_name, downloaded_filenames)
+            # Only add valid FLACs to playlist, ignoring the text error files
+            if filename and mix_category != "Error":
+                downloaded_filenames.append(filename)
+                
+            summary_stats[mix_category] = summary_stats.get(mix_category, 0) + 1
         
-    # Calculate Summary
-    total_tracks = len(tracks)
-    skipped_count = summary_stats.get("Skipped", 0)
-    error_count = summary_stats.get("Error", 0)
-    downloaded_total = total_tracks - skipped_count - error_count
-    
-    logging.info("--- DOWNLOAD SUMMARY ---")
-    logging.info(f"  Playlist Total: {total_tracks} tracks")
-    logging.info(f"  Already On Disk: {skipped_count}")
-    logging.info(f"  Downloaded: {downloaded_total}")
-    for mix, count in sorted(summary_stats.items()):
-        if mix not in ["Skipped", "Error"]:
-            logging.info(f"    - {mix}: {count}")
-    logging.info(f"  Not Matched / Error: {error_count}")
-    logging.info("Batch processing complete.")
+        # Final Step: Create M3U8 Playlist
+        if downloaded_filenames:
+            create_m3u8_playlist(args.dir, playlist_name, downloaded_filenames)
+            
+        # Calculate Summary
+        total_tracks = len(tracks)
+        skipped_count = summary_stats.get("Skipped", 0)
+        error_count = summary_stats.get("Error", 0)
+        downloaded_total = total_tracks - skipped_count - error_count
+        
+        logging.info("--- DOWNLOAD SUMMARY ---")
+        logging.info(f"  Playlist Total: {total_tracks} tracks")
+        logging.info(f"  Already On Disk: {skipped_count}")
+        logging.info(f"  Downloaded: {downloaded_total}")
+        for mix, count in sorted(summary_stats.items()):
+            if mix not in ["Skipped", "Error"]:
+                logging.info(f"    - {mix}: {count}")
+        logging.info(f"  Not Matched / Error: {error_count}")
+        logging.info("Batch processing complete.")
+        
+        # Reset current_url so it prompts again on the next loop!
+        current_url = None
 
 if __name__ == "__main__":
     main()
