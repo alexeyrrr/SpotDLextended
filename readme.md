@@ -32,7 +32,7 @@
 **SpotDLextended** is a playlist utility that takes a Spotify playlist URL, extracts the track data and resolves individual tracks to high-fidelity download links. Its primary function is to generate local `.m3u8` playlists - preserving your original playlist order - that can then be used in DJ software (Serato, Rekordbox, Traktor). It can also download all the tracks as high-quality Lossless FLAC files.
  
 > [!NOTE]
-> **Designed primarily for DJs and audiophiles:** the matching engine prioritizes **Extended Mixes**, **Original Mixes**, and **Club Mixes** over standard radio mixes or direct track matches. Unless overridden, it will always attempt to download an extended mix if it is available.
+> **Designed primarily for DJs and audiophiles:** the matching engine prioritizes **Extended Mixes**, **Original Mixes**, and **Club Mixes** over standard radio mixes or direct track matches. Unless overridden (via arguments or settings.json file), it will always attempt to download an extended mix if it is available.
 
 > [!IMPORTANT]
 > **Read Before Use**: SpotDLextended now features a persistent configuration system. On your first run, the tool will guide you through a quick setup to define your music library path. Default paths are OS-aware (e.g., `~/Music/` on Linux/macOS or `%USERPROFILE%\Music\` on Windows).
@@ -45,16 +45,6 @@ If you want to download playlists without installing Python, follow these steps:
 1.  **Download the latest version**: Look at the **"Releases"** section on the right-hand side of this page.
 2.  **Download `SpotDLextended.exe`**: Click on the latest release and download the `.exe` file from the assets.
 3.  **Run it**: And follow the on-screen instructions
-
-
----
-
-
-## Privacy & Account Concerns
-
-**SpotDLextended does not require Spotify login/API keys or Tidal API keys**, nor does it store any information. Because the script uses public endpoints and scrapers, there is **virtually zero risk** of your personal accounts being affected in any way.
-
-The only theoretical risk is IP-based rate limiting or flagging from the public API endpoints if used excessively, though the script's built-in endpoint rotation and fallback logic are designed to minimize this.
 
 ---
 
@@ -79,6 +69,12 @@ Instead of blindly downloading the exact Spotify match, SpotDLextended acts like
 - **Persistent Settings:** Your preferences (output directory, overwrite behavior, etc.) are saved in `settings.json` at the project root.
 - **Extended Mix Toggle:** Prefer the original radio edit? Use `--no-extended` to disable the hunt for club versions.
 - **Playlist Only Mode:** Need to generate just a local playlist file (`.m3u8`)? Use `--playlist-only`.
+
+
+> [!CAUTION]
+> **SpotDLextended does not require Spotify login/API keys or Tidal API keys**, nor does it store any personal information. Because it uses public endpoints and scrapers, there is **virtually zero risk** of your personal accounts being affected.
+> 
+> The only theoretical risk is IP-based rate limiting from public API endpoints if used excessively. The script’s built-in endpoint rotation and fallback logic are designed to minimize this.
 
 ---
 
