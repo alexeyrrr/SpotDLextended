@@ -89,8 +89,8 @@ Instead of blindly downloading the exact Spotify match, SpotDLextended acts like
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/alexeyrrr/SpotDLextended.git
-   cd spotdl-ext
+   git clone https://github.com/alexeyrrr/spotDLextended.git
+   cd spotDLextended
    ```
 
 2. **Create and activate a virtual environment:**
@@ -111,7 +111,7 @@ Instead of blindly downloading the exact Spotify match, SpotDLextended acts like
 For an isolated, globally accessible installation:
 
 ```bash
-pipx install git+https://github.com/alexeyrrr/SpotDLextended.git
+pipx install git+https://github.com/alexeyrrr/spotDLextended.git
 ```
 
 ---
