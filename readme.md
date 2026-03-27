@@ -29,7 +29,7 @@
 
 ## What is SpotDLextended?
 
-**SpotDLextended** is a specialized local playlist utility that takes a Spotify playlist URL, extracts the track data via a headless browser scraper, and resolves individual tracks via high-fidelity API endpoints (Tidal/Monochrome). Its primary function is to generate local `.m3u8` playlists - preserving your original curation order - that can be used in DJ software (Serato, Rekordbox, Traktor). It can also download all the tracks as a high-quality Lossless FLAC files.
+**SpotDLextended** is a playlist utility that takes a Spotify playlist URL, extracts the track data and resolves individual tracks to high-fidelity download links. Its primary function is to generate local `.m3u8` playlists - preserving your original playlist order - that can then be used in DJ software (Serato, Rekordbox, Traktor). It can also download all the tracks as high-quality Lossless FLAC files.
  
 > [!NOTE]
 > **Designed primarily for DJs and audiophiles:** the matching engine prioritizes **Extended Mixes**, **Original Mixes**, and **Club Mixes** over standard radio mixes or direct track matches. Unless overridden, it will always attempt to download an extended mix if it is available.
@@ -46,7 +46,9 @@ If you want to download playlists without installing Python, follow these steps:
 2.  **Download `SpotDLextended.exe`**: Click on the latest release and download the `.exe` file from the assets.
 3.  **Run it**: And follow the on-screen instructions
 
+
 ---
+
 
 ## Privacy & Account Concerns
 
