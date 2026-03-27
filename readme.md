@@ -168,7 +168,7 @@ Located at the project root, this file stores your defaults:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  2. RUN AUTODL & PASTE URL                                      │
+│  2. RUN SpotDLextended & PASTE URL                              │
 │     Start the script and paste your Spotify Playlist URL        │
 │     Data extraction begins via internal Headless Scraper        │
 └─────────────────────────────────────────────────────────────────┘
