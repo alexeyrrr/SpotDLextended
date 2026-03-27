@@ -40,6 +40,14 @@
 
 ---
 
+## 🚀 Quick Start (Non-developers)
+If you want to download playlists without installing Python, follow these steps:
+1.  **Download the latest version**: Look at the **"Releases"** section on the right-hand side of this page.
+2.  **Download `SpotDLextended.exe`**: Click on the latest release and download the `.exe` file from the assets.
+3.  **Run it**: And follow the on-screen instructions
+
+---
+
 ## Privacy & Account Concerns
 
 **SpotDLextended does not require Spotify login/API keys or Tidal API keys**, nor does it store any information. Because the script uses public endpoints and scrapers, there is **virtually zero risk** of your personal accounts being affected in any way.
