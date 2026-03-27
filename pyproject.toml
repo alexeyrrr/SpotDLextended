@@ -15,4 +15,4 @@ description = "Spotify to FLAC Extended Mix Downloader"
 readme = "readme.md"
 
 [project.scripts]
-spotdl-ext = "spotdlextended.__main__:main"
+spotdlextended = "spotdlextended.__main__:main"

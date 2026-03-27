@@ -120,9 +120,9 @@ pipx install git+https://github.com/alexeyrrr/SpotDLextended.git
 
 ### Interactive Mode
 
-Simply run the `spotdl-ext` command and follow the prompt:
+Simply run the `spotdlextended` command and follow the prompt:
 ```bash
-spotdl-ext
+spotdlextended
 ```
 
 ### CLI Mode
@@ -131,22 +131,22 @@ You can supply arguments directly via the command line:
 
 ```bash
 # Basic download from URL
-spotdl-ext -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
+spotdlextended -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 
 # Force overwrite (overrides settings.json)
-spotdl-ext -f -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
+spotdlextended -f -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 
 # Disable Extended Mix hunting
-spotdl-ext --no-extended -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
+spotdlextended --no-extended -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 
 # Generate playlist ONLY without downloading
-spotdl-ext -p -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
+spotdlextended -p -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 ```
 
 ### Options
 
 | Flag | Name | Description |
-|------|------|-------------|
+|------|------|-------------
 | `-u`, `--url` | URL | Spotify Playlist URL to process. |
 | `-f`, `--force` | Force | FULL OVERWRITE: Replace existing files. |
 | `-o`, `--output` | Output Dir | SET OUTPUT FOLDER: Root directory for your music. |

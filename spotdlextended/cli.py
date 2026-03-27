@@ -15,7 +15,7 @@ def parse_args():
             "  - Smart update logic (skips existing files unless forced)."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
-        epilog="Examples:\n  spotdl-ext -u [URL]\n  spotdl-ext --force --dir /mnt/d/Music\n  spotdl-ext --help"
+        epilog="Examples:\n  spotdlextended -u [URL]\n  spotdlextended --force --dir /mnt/d/Music\n  spotdlextended --help"
     )
 
     parser.add_argument(
