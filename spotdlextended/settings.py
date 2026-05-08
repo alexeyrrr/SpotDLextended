@@ -19,6 +19,7 @@ else:
 DEFAULT_API_ENDPOINTS = [
     "https://api.monochrome.tf",
     "https://monochrome-api.samidy.com",
+    "https://hifi.geeked.wtf",
     "https://arran.monochrome.tf",
     "https://triton.squid.wtf",
     "https://wolf.qqdl.site",
