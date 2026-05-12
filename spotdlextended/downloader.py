@@ -9,6 +9,16 @@ import unicodedata
 from rapidfuzz import fuzz
 from mutagen.flac import FLAC, Picture
 
+FORMAT_SIGNATURES = {
+    'flac': b'fLaC',
+    'm4a': b'ftyp',
+    'mp4': b'ftyp',
+    'aac': b'ftyp',
+    'mp3': b'ID3',
+    'ogg': b'OggS',
+    'wav': b'RIFF'
+}
+
 class Downloader:
     def __init__(self, api_endpoints, search_blacklist=None):
         self.api_endpoints = api_endpoints
@@ -39,6 +49,35 @@ class Downloader:
             attempts += 1
             
         raise Exception("All alternate API endpoints failed or rate limited.")
+
+    @staticmethod
+    def verify_file_format(file_path, expected_format):
+        """Verifies if the file has the correct magic bytes for the expected format."""
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+            
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            raise ValueError(f"File is empty (0 bytes): {file_path}")
+
+        fmt = expected_format.lower().replace(".", "")
+        signature = FORMAT_SIGNATURES.get(fmt)
+        
+        if not signature:
+            logging.debug(f"  [i] No signature check for format: {fmt}")
+            return True
+
+        with open(file_path, 'rb') as f:
+            header = f.read(16)
+            if not header.startswith(signature):
+                # For MP3, if ID3 is missing, it might still be a raw frame, but usually we expect ID3
+                # For AAC/M4A, 'ftyp' is the common header
+                snippet = header.decode('utf-8', errors='replace')
+                logging.error(f"  [❌] FORMAT MISMATCH: Expected {fmt}, but magic bytes '{header[:len(signature)].hex()}' don't match.")
+                logging.error(f"  [ℹ️] Header snippet (hex): {header.hex()}")
+                logging.error(f"  [ℹ️] Header snippet (text): {snippet}")
+                return False
+        return True
 
     @staticmethod
     def sanitize_filename(name):
@@ -207,7 +246,7 @@ class Downloader:
             audio.save()
             logging.info(f"  [🔗] Successfully tagged metadata for: {file_path}")
         except Exception as e:
-            logging.error(f"  [❌] Error tagging file {file_path}: {e}")
+            logging.error(f"  [❌] Error tagging file {file_path}: {e}", exc_info=True)
 
     def download_track(self, track_data, folder, overwrite, playlist_only=False, get_extended=True):
         """
@@ -362,37 +401,101 @@ class Downloader:
                         
                 return final_filename, mix_type
 
-            # 3. Request LOSSLESS Stream Info
-            track_params = {'id': track_id, 'quality': 'LOSSLESS'}
+            # 3. Request LOSSLESS Stream Info (with graceful fallback)
+            max_endpoint_attempts = min(len(self.api_endpoints), 5)
+            format_verified = False
+            fallback_aac_url = None
             
-            stream_response = self.make_api_request('/track/', params=track_params, timeout=15)
-
-            stream_data = stream_response.json().get("data", {})
-            
-            manifest_b64 = stream_data.get("manifest")
-            if not manifest_b64:
-                raise ValueError(f"No audio manifest returned for ID {track_id}")
-
-            manifest = json.loads(base64.b64decode(manifest_b64))
-            audio_urls = manifest.get("urls", [])
-            if not audio_urls:
-                raise ValueError(f"No audio tracks found in manifest for ID {track_id}")
-
-            audio_url = audio_urls[0]
-            
-            logging.info(f"  [⌛] Downloading FLAC Lossless to: {file_path}")
-
-            download_success_flag = False
-            max_download_attempts = 3
-            for attempt in range(1, max_download_attempts + 1):
+            for endpoint_attempt in range(max_endpoint_attempts):
                 try:
-                    audio_stream = requests.get(audio_url, stream=True, timeout=30)
-                    audio_stream.raise_for_status() 
+                    track_params = {'id': track_id, 'quality': 'LOSSLESS'}
+                    stream_response = self.make_api_request('/track/', params=track_params, timeout=15)
+                    stream_data = stream_response.json().get("data", {})
                     
-                    # Retrieve expected content length from headers
-                    expected_size = audio_stream.headers.get('Content-Length')
-                    if expected_size is not None:
-                        expected_size = int(expected_size)
+                    manifest_b64 = stream_data.get("manifest")
+                    if not manifest_b64:
+                        self.current_endpoint_idx = (self.current_endpoint_idx + 1) % len(self.api_endpoints)
+                        continue
+
+                    manifest = json.loads(base64.b64decode(manifest_b64))
+                    audio_urls = manifest.get("urls", [])
+                    if not audio_urls:
+                        self.current_endpoint_idx = (self.current_endpoint_idx + 1) % len(self.api_endpoints)
+                        continue
+
+                    audio_url = audio_urls[0]
+                    audio_quality = stream_data.get("audioQuality", "")
+
+                    if audio_quality == "HIGH":
+                        if not fallback_aac_url:
+                            fallback_aac_url = audio_url
+                        logging.warning(f"  [⚠️] Endpoint returned AAC (HIGH) instead of FLAC. Trying next endpoint...")
+                        self.current_endpoint_idx = (self.current_endpoint_idx + 1) % len(self.api_endpoints)
+                        continue
+
+                    logging.info(f"  [⌛] Downloading FLAC Lossless from endpoint attempt {endpoint_attempt + 1}")
+                    
+                    download_success_flag = False
+                    max_download_attempts = 3
+                    for attempt in range(1, max_download_attempts + 1):
+                        try:
+                            audio_stream = requests.get(audio_url, stream=True, timeout=30)
+                            audio_stream.raise_for_status() 
+                            
+                            expected_size = audio_stream.headers.get('Content-Length')
+                            if expected_size is not None:
+                                expected_size = int(expected_size)
+                            
+                            with open(file_path, 'wb') as f:
+                                downloaded_size = 0
+                                for chunk in audio_stream.iter_content(chunk_size=8192):
+                                    if chunk:
+                                        f.write(chunk)
+                                        downloaded_size += len(chunk)
+                            
+                            if downloaded_size == 0:
+                                raise ValueError("Download returned 0 bytes")
+                                
+                            if expected_size is not None and downloaded_size < expected_size:
+                                raise ValueError(f"Incomplete download: Received {downloaded_size} bytes, expected {expected_size} bytes")
+                                
+                            download_success_flag = True
+                            break
+                        except Exception as e:
+                            logging.warning(f"  [⚠️] Download interrupted on attempt {attempt}/{max_download_attempts}: {e}")
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                            if attempt == max_download_attempts:
+                                raise ValueError(f"Failed to download after {max_download_attempts} attempts: {e}")
+                            time.sleep(2)
+
+                    # 4. Verify Format Integrity
+                    if download_success_flag:
+                        expected_ext = os.path.splitext(file_path)[1]
+                        if self.verify_file_format(file_path, expected_ext):
+                            format_verified = True
+                            break
+                        else:
+                            logging.warning(f"  [⚠️] Format mismatch. Not a valid {expected_ext}. Trying next endpoint...")
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                            self.current_endpoint_idx = (self.current_endpoint_idx + 1) % len(self.api_endpoints)
+                            continue
+
+                except Exception as e:
+                    logging.warning(f"  [⚠️] Endpoint attempt {endpoint_attempt + 1} failed: {e}")
+                    self.current_endpoint_idx = (self.current_endpoint_idx + 1) % len(self.api_endpoints)
+                    continue
+
+            # 4.5 Fallback to AAC if all endpoints failed to provide FLAC
+            if not format_verified:
+                if fallback_aac_url:
+                    logging.info(f"  [ℹ️] All endpoints failed to provide FLAC. Falling back to AAC.")
+                    final_filename = final_filename.replace(".flac", ".m4a")
+                    file_path = os.path.join(folder, final_filename)
+                    
+                    audio_stream = requests.get(fallback_aac_url, stream=True, timeout=30)
+                    audio_stream.raise_for_status()
                     
                     with open(file_path, 'wb') as f:
                         downloaded_size = 0
@@ -400,23 +503,8 @@ class Downloader:
                             if chunk:
                                 f.write(chunk)
                                 downloaded_size += len(chunk)
-                    
-                    if downloaded_size == 0:
-                        raise ValueError("Download returned 0 bytes")
-                        
-                    # The Golden Rule Check
-                    if expected_size is not None and downloaded_size < expected_size:
-                        raise ValueError(f"Incomplete download: Received {downloaded_size} bytes, expected {expected_size} bytes")
-                        
-                    download_success_flag = True
-                    break  # Successful download, exit the loop
-                except Exception as e:
-                    logging.warning(f"  [⚠️] Download interrupted on attempt {attempt}/{max_download_attempts}: {e}")
-                    if os.path.exists(file_path):
-                        os.remove(file_path) # Clean up partial file
-                    if attempt == max_download_attempts:
-                        raise ValueError(f"Failed to download {final_filename} after {max_download_attempts} attempts: {e}")
-                    time.sleep(2)  # Small backoff before retry
+                else:
+                    raise ValueError(f"All {max_endpoint_attempts} endpoints failed to provide a valid audio stream.")
 
             # Use double check for Extended/Special matches to make them pop
             download_success = "✨Extended Mix Downloaded" if chosen_modifier != "" else "Direct Match Downloaded"
@@ -441,5 +529,7 @@ class Downloader:
 
         # Fatal error logging
         except Exception as e:
-            logging.error(f"  [❌] Fatal error processing {track_data['title']}: {e}")
+            logging.error(f"  [❌] Fatal error processing {track_data['title']}: {e}", exc_info=True)
+            if 'audio_url' in locals():
+                logging.error(f"  [ℹ️] Final Download URL was: {audio_url}")
             raise
