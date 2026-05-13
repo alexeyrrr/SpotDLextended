@@ -76,7 +76,7 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames):
 
     try:
         with open(playlist_path, "w", encoding="utf-8") as f:
-            f.write("#EXTM3U\\n")
+            f.write("#EXTM3U\n")
             for filename in track_filenames:
                 # 1. Extract metadata from the local FLAC header
                 file_path = os.path.join(base_dir, playlist_folder_name, filename)
@@ -95,19 +95,51 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames):
                         if key: tags.append(f"key={key}")
                         ext_info += f" | {' | '.join(tags)}"
                         
-                    f.write(ext_info + "\\n")
+                    f.write(ext_info + "\n")
                 except Exception:
                     # Fallback if FLAC parsing fails
-                    f.write(f"#EXTINF:-1,{filename}\\n")
+                    f.write(f"#EXTINF:-1,{filename}\n")
 
                 # 2. Add the track path location
                 abs_track_path = os.path.join(m3u_base, playlist_folder_name, filename)
                 abs_track_path = abs_track_path.replace("\\\\", "/")
-                f.write(f"{abs_track_path}\\n")
+                f.write(f"{abs_track_path}\n")
                 
         logging.info(f"  [✓] Created metadata-rich playlist: {playlist_path}")
     except Exception as e:
         logging.error(f"  [❌] Error creating playlist: {e}")
+
+
+def regenerate_playlist(base_dir, playlist_folder_name):
+    """
+    Regenerates the .m3u8 playlist for an existing folder by scanning it for audio tracks.
+    """
+    playlist_folder = os.path.join(base_dir, playlist_folder_name)
+    if not os.path.exists(playlist_folder):
+        logging.error(f"  [❌] Folder not found: {playlist_folder}")
+        return
+
+    logging.info(f"Scanning folder '{playlist_folder_name}' for audio tracks...")
+    valid_extensions = {".flac", ".m4a", ".mp3", ".wav", ".ogg"}
+    track_filenames = []
+    
+    try:
+        for f in os.listdir(playlist_folder):
+            if os.path.isfile(os.path.join(playlist_folder, f)) and os.path.splitext(f)[1].lower() in valid_extensions:
+                track_filenames.append(f)
+                
+        if not track_filenames:
+            logging.warning(f"  [⚠️] No valid audio files found in {playlist_folder}")
+            return
+            
+        # Sort files by modification time to preserve original download order
+        track_filenames.sort(key=lambda f: os.path.getmtime(os.path.join(playlist_folder, f)))
+        
+        logging.info(f"  [ℹ️] Found {len(track_filenames)} tracks. Generating playlist...")
+        create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames)
+        
+    except Exception as e:
+        logging.error(f"  [❌] Error scanning directory: {e}")
 
 
 def main():
@@ -132,6 +164,16 @@ def main():
     
     # Convert whatever path is provided into its OS-correct equivalent
     args.dir = translate_path_to_os(args.dir)
+
+    if args.regenerate:
+        regen_path = translate_path_to_os(args.regenerate)
+        regen_path = os.path.abspath(regen_path)
+        regen_base_dir = os.path.dirname(regen_path)
+        regen_folder_name = os.path.basename(regen_path)
+        
+        logging.info(f"Regenerating playlist for: {regen_path}")
+        regenerate_playlist(regen_base_dir, regen_folder_name)
+        return
 
     # We will loop infinitely to allow multiple downloads without the window closing
     is_first_prompt = True

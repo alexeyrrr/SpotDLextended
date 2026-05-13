@@ -49,4 +49,11 @@ def parse_args():
         help="DIRECT MATCH ONLY: Disables hunting for 'Extended/Club' mixes and strictly searches for the exact track."
     )
 
+    parser.add_argument(
+        "-r", "--regenerate",
+        type=str,
+        metavar="FOLDER_PATH",
+        help="REGENERATE PLAYLIST: Provide the complete filepath to an existing playlist folder to rebuild its .m3u8 file"
+    )
+
     return parser, parser.parse_args()

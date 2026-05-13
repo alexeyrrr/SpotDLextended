@@ -69,6 +69,7 @@ Instead of blindly downloading the exact Spotify match, SpotDLextended acts like
 - **Persistent Settings:** Your preferences (output directory, overwrite behavior, etc.) are saved in `settings.json` at the project root.
 - **Extended Mix Toggle:** Prefer the original radio edit? Use `--no-extended` to disable the hunt for club versions.
 - **Playlist Only Mode:** Need to generate just a local playlist file (`.m3u8`)? Use `--playlist-only`.
+- **Playlist Regeneration:** Need to fix or recreate an `.m3u8` playlist for an existing folder? Use `--regenerate "/complete/path/to/Folder Name"` to rebuild it while preserving the original track order.
 
 
 > [!CAUTION]
@@ -153,6 +154,7 @@ spotdlextended -p -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 | `-o`, `--output` | Output Dir | SET OUTPUT FOLDER: Root directory for your music. |
 | `-p`, `--playlist` | Playlist Only | Generate .m3u8 without downloading audio. |
 | `--no-extended` | No Extended | Skip searching for Extended/Club mixes. |
+| `-r`, `--regenerate` | Regenerate | Rebuild .m3u8 playlist file for an existing folder. |
 
 ### Configuration (`settings.json`)
 
