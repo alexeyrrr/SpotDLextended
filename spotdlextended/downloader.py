@@ -56,9 +56,11 @@ class Downloader:
 
     @staticmethod
     def get_primary_artist(artist_str):
-        """Returns the first credited artist, stripping feat./ft./& etc."""
+        """Returns the first credited artist, stripping parentheticals, feat./ft./& etc."""
         if not artist_str:
             return ""
+        # Remove parentheticals and brackets
+        artist_str = re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', artist_str)
         parts = re.split(r',|&|\bfeat\.?\b|\bft\.?\b|\band\b|\bx\b|\bfeaturing\b',
                          artist_str, flags=re.IGNORECASE)
         return Downloader.normalize_string(parts[0])
@@ -79,7 +81,8 @@ class Downloader:
         is_remix_target = bool(re.search(r'\bremix\b', spotify_title, flags=re.IGNORECASE))
         core_spot_title = self.normalize_string(
             re.sub(r'(?i)\b(extended|original|club|mix|edit|remix|remixed|vip)\b', '', 
-            re.sub(r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*', '', spotify_title))
+            re.sub(r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*', '', 
+            re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', spotify_title)))
         )
         norm_spot_artist = self.get_primary_artist(spotify_artist)
         
@@ -293,7 +296,8 @@ class Downloader:
         norm_spot_artist = self.get_primary_artist(spotify_artist)
         core_spot_title = self.normalize_string(
             re.sub(r'(?i)\b(extended|original|club|mix|edit|remix|remixed|vip)\b', '', 
-            re.sub(r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*', '', spotify_title))
+            re.sub(r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*', '', 
+            re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', spotify_title)))
         )
         
         valid_exts = {'.mp3', '.flac'}
@@ -352,14 +356,15 @@ class Downloader:
         # Strip mix/remix modifiers for a core title comparison
         mix_pattern = r'(?i)\b(extended|original|club|mix|edit|remix|remixed|vip)\b'
         feat_pattern = r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*'
+        paren_pattern = r'\s*[\(\[][^\)\]]*[\)\]]'
         core_spot_title = self.normalize_string(
-            re.sub(mix_pattern, '', re.sub(feat_pattern, '', spotify_title))
+            re.sub(mix_pattern, '', re.sub(feat_pattern, '', re.sub(paren_pattern, '', spotify_title)))
         )
 
         if tag_artist and tag_title:
             norm_tag_artist = self.normalize_string(self.get_primary_artist(tag_artist))
             core_tag_title = self.normalize_string(
-                re.sub(mix_pattern, '', re.sub(feat_pattern, '', tag_title))
+                re.sub(mix_pattern, '', re.sub(feat_pattern, '', re.sub(paren_pattern, '', tag_title)))
             )
 
             artist_score = fuzz.token_set_ratio(norm_spot_artist, norm_tag_artist)
@@ -470,7 +475,24 @@ class Downloader:
     # Stage 4: ID3 tagging
     # ─────────────────────────────────────────────
 
-    def tag_mp3(self, file_path, spotify_title, spotify_artist, spotify_uri, chosen_filename):
+    @staticmethod
+    def determine_mix_title(spotify_title, chosen_filename):
+        """
+        Appends the mix type to the title based on keywords in the chosen filename,
+        if it's not already present in the original title.
+        """
+        title = spotify_title
+        chosen_lower = chosen_filename.lower()
+        if "extended" in chosen_lower and "extended" not in title.lower():
+            title = f"{title} (Extended Mix)"
+        elif "club" in chosen_lower and "club" not in title.lower():
+            title = f"{title} (Club Mix)"
+        elif "original mix" in chosen_lower and "original" not in title.lower():
+            title = f"{title} (Original Mix)"
+        return title
+
+
+    def tag_mp3(self, file_path, resolved_title, spotify_artist, spotify_uri):
         """Strips all existing tags and writes clean Spotify-sourced metadata."""
         try:
             # Load existing tags (written by ffmpeg during transcode) or create fresh
@@ -480,19 +502,9 @@ class Downloader:
             except ID3Error:
                 tags = ID3()
 
-            # Reflect the mix type found in the chosen filename
-            title = spotify_title
-            chosen_lower = chosen_filename.lower()
-            if "extended" in chosen_lower and "extended" not in title.lower():
-                title = f"{title} (Extended Mix)"
-            elif "club" in chosen_lower and "club" not in title.lower():
-                title = f"{title} (Club Mix)"
-            elif "original mix" in chosen_lower and "original" not in title.lower():
-                title = f"{title} (Original Mix)"
-
-            tags.add(TIT2(encoding=3, text=title))
+            tags.add(TIT2(encoding=3, text=resolved_title))
             tags.add(TPE1(encoding=3, text=spotify_artist))
-            tags.add(TALB(encoding=3, text=f"{spotify_title} Single"))
+            tags.add(TALB(encoding=3, text=f"{resolved_title} Single"))
 
             # Cover art from Spotify embed API
             cover_data = None
@@ -708,6 +720,11 @@ class Downloader:
                 continue
             logger.info(f"  [✓] Metadata verified — {match_reason}")
 
+            # ── Determine Final Mix Title ──────────────────────────────────
+            resolved_title = self.determine_mix_title(spotify_title, os.path.basename(c['filename']))
+            final_safe_base = self.sanitize_filename(f"{resolved_title} - {spotify_artist}")
+            mp3_path = os.path.join(target_download_folder, f"{final_safe_base}.mp3")
+
             # ── Quality check / transcode ──────────────────────────────────
             if ext == ".mp3":
                 logger.info("  [🔬] Checking MP3 spectral quality...")
@@ -779,9 +796,9 @@ class Downloader:
                 logger.warning(f"  [⚠] Could not remove old file: {e}")
 
         # ── Tag ────────────────────────────────────────────────────────────
+        resolved_title = self.determine_mix_title(spotify_title, os.path.basename(success_candidate['filename']))
         self.tag_mp3(
-            downloaded_filepath, spotify_title, spotify_artist,
-            spotify_uri, os.path.basename(success_candidate['filename'])
+            downloaded_filepath, resolved_title, spotify_artist, spotify_uri
         )
 
         # Mark as Upgraded when a pre-existing standard mix was replaced
@@ -789,9 +806,9 @@ class Downloader:
         if upgrade_extended and existing_in_playlist:
             final_mix_type = "Upgraded"
 
-        final_return_path = f"{safe_base}.mp3"
+        final_return_path = os.path.basename(downloaded_filepath)
         if 'target_download_folder' in locals() and target_download_folder != folder:
-            final_return_path = mp3_path
+            final_return_path = downloaded_filepath
 
         return final_return_path, final_mix_type
 
