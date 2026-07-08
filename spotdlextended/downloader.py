@@ -552,8 +552,8 @@ class Downloader:
         spotify_secs = spotify_duration_ms / 1000.0
 
         safe_base = self.sanitize_filename(f"{spotify_title} - {spotify_artist}")
-        mp3_path = os.path.join(folder, f"{safe_base}.mp3")
-        flac_path = os.path.join(folder, f"{safe_base}.flac")
+        
+        target_download_folder = folder
 
         # Track the pre-existing file in the playlist folder so we can delete it on success
         existing_in_playlist = None
@@ -566,12 +566,18 @@ class Downloader:
                     existing_in_playlist = candidate_path
                     break
 
+            if not existing_in_playlist and library_dir:
+                existing_track = self.find_existing_track_in_library(track_data, library_dir)
+                if existing_track:
+                    existing_in_playlist = existing_track
+                    target_download_folder = os.path.dirname(existing_track)
+
             if existing_in_playlist and self.is_already_extended_mix(existing_in_playlist):
                 logger.info(
                     f"  [-] Already an extended/mix version (or > 5 mins), skipping upgrade: "
                     f"{os.path.basename(existing_in_playlist)}"
                 )
-                return os.path.basename(existing_in_playlist), "Skipped"
+                return existing_in_playlist if os.path.isabs(existing_in_playlist) else os.path.basename(existing_in_playlist), "Skipped"
 
             # Force extended searching regardless of the caller's get_extended value
             get_extended = True
@@ -580,8 +586,11 @@ class Downloader:
                 f"(existing: {os.path.basename(existing_in_playlist) if existing_in_playlist else 'none'})"
             )
 
+        mp3_path = os.path.join(target_download_folder, f"{safe_base}.mp3")
+        flac_path = os.path.join(target_download_folder, f"{safe_base}.flac")
+
         # ── Standard intelligent skip (unchanged when not upgrading) ──────
-        elif not overwrite:
+        if not upgrade_extended and not overwrite:
             if os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 0:
                 logger.info(f"  [-] Already exists in playlist (MP3): {safe_base}.mp3")
                 return f"{safe_base}.mp3", "Skipped"
@@ -591,7 +600,7 @@ class Downloader:
 
         logger.info(f"\n🎵 {spotify_title} — {spotify_artist}")
         
-        # ── Global Library Search (skipped in upgrade mode — always download fresh) ──
+        # ── Global Library Search (skipped in upgrade mode if already found) ──
         if library_dir and not overwrite and not upgrade_extended:
             existing_track = self.find_existing_track_in_library(track_data, library_dir)
             if existing_track:
@@ -747,6 +756,25 @@ class Downloader:
             try:
                 os.remove(existing_in_playlist)
                 logger.info(f"  [🗑] Removed standard mix: {existing_in_playlist}")
+                
+                # Update any .m3u8 playlist in the directory where the file lived
+                playlist_dir = os.path.dirname(existing_in_playlist)
+                old_filename = os.path.basename(existing_in_playlist)
+                new_filename = os.path.basename(downloaded_filepath)
+                if old_filename != new_filename:
+                    for f in os.listdir(playlist_dir):
+                        if f.endswith(".m3u8"):
+                            m3u8_path = os.path.join(playlist_dir, f)
+                            try:
+                                with open(m3u8_path, 'r', encoding='utf-8') as pl_file:
+                                    content = pl_file.read()
+                                if old_filename in content:
+                                    content = content.replace(old_filename, new_filename)
+                                    with open(m3u8_path, 'w', encoding='utf-8') as pl_file:
+                                        pl_file.write(content)
+                                    logger.info(f"  [📝] Updated playlist: {f}")
+                            except Exception as pl_err:
+                                logger.warning(f"  [⚠] Failed to update playlist {f}: {pl_err}")
             except Exception as e:
                 logger.warning(f"  [⚠] Could not remove old file: {e}")
 
@@ -761,7 +789,11 @@ class Downloader:
         if upgrade_extended and existing_in_playlist:
             final_mix_type = "Upgraded"
 
-        return f"{safe_base}.mp3", final_mix_type
+        final_return_path = f"{safe_base}.mp3"
+        if 'target_download_folder' in locals() and target_download_folder != folder:
+            final_return_path = mp3_path
+
+        return final_return_path, final_mix_type
 
     # ─────────────────────────────────────────────
     # Utilities
