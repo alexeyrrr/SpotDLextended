@@ -246,6 +246,7 @@ class Downloader:
         """
         Returns True if the file already appears to be an extended, original, club, or remix version.
         Checks both the filename and the embedded title tag so that re-tagged files are also caught.
+        Also returns True if the track duration is over 5 minutes.
         """
         extended_kw = ["extended", "original", "club mix", "remix"]
 
@@ -253,17 +254,21 @@ class Downloader:
         if any(kw in filename_lower for kw in extended_kw):
             return True
 
-        # Also check embedded title tag
+        # Also check embedded title tag and length
         ext = os.path.splitext(file_path)[1].lower()
         try:
             title = None
             if ext == ".mp3":
                 audio = MP3(file_path, ID3=ID3)
+                if audio.info.length > 300:
+                    return True
                 if audio.tags:
                     tit2 = audio.tags.get("TIT2")
                     title = tit2.text[0] if tit2 else None
             elif ext == ".flac":
                 audio = FLAC(file_path)
+                if audio.info.length > 300:
+                    return True
                 title = audio.get("title", [None])[0]
             if title and any(kw in title.lower() for kw in extended_kw):
                 return True
@@ -562,7 +567,7 @@ class Downloader:
 
             if existing_in_playlist and self.is_already_extended_mix(existing_in_playlist):
                 logger.info(
-                    f"  [-] Already an extended/mix version, skipping upgrade: "
+                    f"  [-] Already an extended/mix version (or > 5 mins), skipping upgrade: "
                     f"{os.path.basename(existing_in_playlist)}"
                 )
                 return os.path.basename(existing_in_playlist), "Skipped"
