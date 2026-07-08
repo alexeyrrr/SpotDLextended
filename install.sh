@@ -34,35 +34,10 @@ CONFIG_FILE="$CONFIG_DIR/sockseek.conf"
 # Create the directory if it doesn't exist
 mkdir -p "$CONFIG_DIR"
 
-# Create a blank config file if it doesn't exist
+# Create config file if it doesn't exist
 if [ ! -f "$CONFIG_FILE" ]; then
-    # Generate default config file with safer, empty defaults
-cat <<EOF > "$CONFIG_FILE"
-# Soulseek Configuration
-credentials:
-  username: "your_username_here"
-  password: "your_password_here"
-
-network:
-  # Ensure this port is open on your firewall/router if you want "active" mode
-  listening_port: 55348
-  limits:
-    upload_speed_kbps: 200
-    download_speed_kbps: 10000
-    upload_slots: 5
-
-shares:
-  scan_on_start: true
-  # SECURITY: Avoid sharing broad folders like Downloads or Home.
-  # Explicitly add specific folders only when you are ready.
-  directories:
-    # - path: "$HOME/SoulseekShare"
-    #   mode: "EVERYONE"
-
-searches:
-  request_timeout: 60
-  wishlist_request_timeout: 120
-EOF
+    # Using printf to ensure clean, simple key=value format
+    printf "username=your_username_here\npassword=your_password_here\noutput-dir=%s/Music\n" "$HOME" > "$CONFIG_FILE"
     echo "Created default config file at $CONFIG_FILE"
 else
     echo "Config file already exists, skipping creation."
