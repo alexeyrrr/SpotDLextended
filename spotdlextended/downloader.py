@@ -235,6 +235,37 @@ class Downloader:
             pass
         return None
 
+    @staticmethod
+    def is_already_extended_mix(file_path):
+        """
+        Returns True if the file already appears to be an extended, original, club, or remix version.
+        Checks both the filename and the embedded title tag so that re-tagged files are also caught.
+        """
+        extended_kw = ["extended", "original", "club mix", "remix"]
+
+        filename_lower = os.path.basename(file_path).lower()
+        if any(kw in filename_lower for kw in extended_kw):
+            return True
+
+        # Also check embedded title tag
+        ext = os.path.splitext(file_path)[1].lower()
+        try:
+            title = None
+            if ext == ".mp3":
+                audio = MP3(file_path, ID3=ID3)
+                if audio.tags:
+                    tit2 = audio.tags.get("TIT2")
+                    title = tit2.text[0] if tit2 else None
+            elif ext == ".flac":
+                audio = FLAC(file_path)
+                title = audio.get("title", [None])[0]
+            if title and any(kw in title.lower() for kw in extended_kw):
+                return True
+        except Exception:
+            pass
+
+        return False
+
     def find_existing_track_in_library(self, track_data, library_dir):
         """
         Scans library_dir for matching tracks.
@@ -485,7 +516,8 @@ class Downloader:
     # ─────────────────────────────────────────────
 
     def download_track(self, track_data, folder, overwrite=False,
-                       playlist_only=False, get_extended=True, library_dir=None):
+                       playlist_only=False, get_extended=True, library_dir=None,
+                       upgrade_extended=False):
         """
         Full pipeline:
           1. Check library dir for existing matching tracks via fuzzy match & tags.
@@ -495,6 +527,11 @@ class Downloader:
           5. For each candidate: download → read tags → verify match
           6. If MP3: spectral quality check; if lossless: transcode to 320 MP3
           7. Tag and move to final location
+
+        When upgrade_extended=True the behaviour is similar to overwrite but *only* downloads
+        if an extended/club/original mix is found. Files whose filename or title tag already
+        contain an extended-mix keyword are skipped. The old standard-mix file is removed
+        only after a confirmed successful replacement download.
         """
         spotify_title = track_data['title']
         spotify_artist = track_data['artist']
@@ -506,8 +543,33 @@ class Downloader:
         mp3_path = os.path.join(folder, f"{safe_base}.mp3")
         flac_path = os.path.join(folder, f"{safe_base}.flac")
 
-        # ── Intelligent skip ──────────────────────────────────────────────
-        if not overwrite:
+        # Track the pre-existing file in the playlist folder so we can delete it on success
+        existing_in_playlist = None
+
+        # ── Upgrade-extended mode ─────────────────────────────────────────
+        if upgrade_extended:
+            for ext_check in [".mp3", ".flac"]:
+                candidate_path = os.path.join(folder, f"{safe_base}{ext_check}")
+                if os.path.exists(candidate_path) and os.path.getsize(candidate_path) > 0:
+                    existing_in_playlist = candidate_path
+                    break
+
+            if existing_in_playlist and self.is_already_extended_mix(existing_in_playlist):
+                logger.info(
+                    f"  [-] Already an extended/mix version, skipping upgrade: "
+                    f"{os.path.basename(existing_in_playlist)}"
+                )
+                return os.path.basename(existing_in_playlist), "Skipped"
+
+            # Force extended searching regardless of the caller's get_extended value
+            get_extended = True
+            logger.info(
+                f"  [🔍] Upgrade mode: searching for extended mix "
+                f"(existing: {os.path.basename(existing_in_playlist) if existing_in_playlist else 'none'})"
+            )
+
+        # ── Standard intelligent skip (unchanged when not upgrading) ──────
+        elif not overwrite:
             if os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 0:
                 logger.info(f"  [-] Already exists in playlist (MP3): {safe_base}.mp3")
                 return f"{safe_base}.mp3", "Skipped"
@@ -517,8 +579,8 @@ class Downloader:
 
         logger.info(f"\n🎵 {spotify_title} — {spotify_artist}")
         
-        # ── Global Library Search ────────────────────────────────────────
-        if library_dir and not overwrite:
+        # ── Global Library Search (skipped in upgrade mode — always download fresh) ──
+        if library_dir and not overwrite and not upgrade_extended:
             existing_track = self.find_existing_track_in_library(track_data, library_dir)
             if existing_track:
                 # Return the absolute path so playlist generator can link it directly
@@ -531,8 +593,19 @@ class Downloader:
         ))
 
         # ── Build single broad search query ──────────────────────────────
+        # Strip parentheticals (...) and [...] from both artist and title before
+        # searching, EXCEPT for remix-containing groups — Soulseek filenames
+        # rarely include "feat.", remaster years, or radio-edit qualifiers, but
+        # they DO carry remix credits which are needed to find the right version.
         primary_artist = self.get_primary_artist(spotify_artist)
-        raw_query = f"{primary_artist} {spotify_title}".replace("-", " ")
+        clean_title = re.sub(
+            r'\s*[\(\[][^\)\]]*[\)\]]',
+            lambda m: m.group(0) if re.search(r'\bremix\b', m.group(0), re.IGNORECASE) else '',
+            spotify_title
+        ).strip()
+        clean_artist = re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', primary_artist).strip()
+        logger.info(f"  [🔍] Clean search terms — artist: '{clean_artist}', title: '{clean_title}'")
+        raw_query = f"{clean_artist} {clean_title}".replace("-", " ")
         search_query = raw_query
         for word in self.search_blacklist:
             search_query = re.sub(rf'\b{re.escape(word)}\b', '', search_query, flags=re.IGNORECASE)
@@ -642,9 +715,20 @@ class Downloader:
 
         if not downloaded_filepath:
             logger.warning(f"  [!] All queries and candidates failed for: {spotify_title}")
+            if upgrade_extended and existing_in_playlist:
+                logger.info(f"  [-] No extended mix found — keeping existing file unchanged.")
+                return os.path.basename(existing_in_playlist), "Skipped"
             self._write_nfo(folder, safe_base, spotify_title, spotify_artist,
                             "All download candidates failed metadata/quality checks.")
             return f"{safe_base} - DOWNLOAD FAILED.nfo", "Error"
+
+        # ── Remove old standard-mix file after confirmed successful upgrade ─
+        if upgrade_extended and existing_in_playlist and existing_in_playlist != downloaded_filepath:
+            try:
+                os.remove(existing_in_playlist)
+                logger.info(f"  [🗑] Removed standard mix: {existing_in_playlist}")
+            except Exception as e:
+                logger.warning(f"  [⚠] Could not remove old file: {e}")
 
         # ── Tag ────────────────────────────────────────────────────────────
         self.tag_mp3(
@@ -652,7 +736,12 @@ class Downloader:
             spotify_uri, os.path.basename(success_candidate['filename'])
         )
 
-        return f"{safe_base}.mp3", success_mix_type
+        # Mark as Upgraded when a pre-existing standard mix was replaced
+        final_mix_type = success_mix_type
+        if upgrade_extended and existing_in_playlist:
+            final_mix_type = "Upgraded"
+
+        return f"{safe_base}.mp3", final_mix_type
 
     # ─────────────────────────────────────────────
     # Utilities

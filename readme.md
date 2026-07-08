@@ -68,6 +68,7 @@ Instead of blindly downloading the exact Spotify match, SpotDLextended acts like
 - **Fail-Safe Processing:** Skips existing local downloads by name checking and fuzzy validation.
 - **Persistent Settings:** Your preferences (output directory, overwrite behavior, etc.) are saved in `settings.json` at the project root.
 - **Extended Mix Toggle:** Prefer the original radio edit? Use `--no-extended` to disable the hunt for club versions.
+- **Upgrade to Extended:** Already have a library of standard mixes? Use `--upgrade-extended` (or `-e`) to re-scan existing tracks and automatically replace standard mixes with extended/club/original mixes when found. Files already identified as a mix (via filename or embedded tag) are skipped, and the old file is only removed after a confirmed successful download.
 - **Playlist Only Mode:** Need to generate just a local playlist file (`.m3u8`)? Use `--playlist-only`.
 - **Playlist Regeneration:** Need to fix or recreate an `.m3u8` playlist for an existing folder? Use `--regenerate "/complete/path/to/Folder Name"` to rebuild it while preserving the original track order.
 
@@ -138,6 +139,9 @@ spotdlextended -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 # Force overwrite (overrides settings.json)
 spotdlextended -f -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 
+# Upgrade all existing standard mixes to extended mixes
+spotdlextended -e -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
+
 # Disable Extended Mix hunting
 spotdlextended --no-extended -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 
@@ -151,6 +155,7 @@ spotdlextended -p -u "https://open.spotify.com/playlist/YOUR_PLAYLIST_ID"
 |------|------|-------------
 | `-u`, `--url` | URL | Spotify Playlist URL to process. |
 | `-f`, `--force` | Force | FULL OVERWRITE: Replace existing files. |
+| `-e`, `--upgrade-extended` | Upgrade Extended | Re-scan existing tracks and replace standard mixes with extended/club/original mixes if found. Files already identified as a mix are skipped; old file deleted only after confirmed success. |
 | `-o`, `--output` | Output Dir | SET OUTPUT FOLDER: Root directory for your music. |
 | `-p`, `--playlist` | Playlist Only | Generate .m3u8 without downloading audio. |
 | `--no-extended` | No Extended | Skip searching for Extended/Club mixes. |

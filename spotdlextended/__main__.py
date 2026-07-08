@@ -191,7 +191,12 @@ def main():
     get_ext = settings.get("get_extended_mixes", True)
     if args.no_extended:
         get_ext = False
-    
+
+    # Upgrade-extended flag (mutually exclusive with no-extended; upgrade always forces extended)
+    upgrade_ext = getattr(args, 'upgrade_extended', False)
+    if upgrade_ext:
+        get_ext = True  # upgrade mode implies extended searching
+
     # Convert whatever path is provided into its OS-correct equivalent
     args.dir = translate_path_to_os(args.dir)
 
@@ -294,7 +299,8 @@ def main():
                 args.force, 
                 args.playlist_only,
                 get_extended=get_ext,
-                library_dir=args.dir
+                library_dir=args.dir,
+                upgrade_extended=upgrade_ext
             )
             
             # Only add valid FLACs to playlist, ignoring the text error files
@@ -320,8 +326,12 @@ def main():
         for mix, count in sorted(summary_stats.items()):
             if mix not in ["Skipped", "Error"]:
                 logging.info(f"    - {mix}: {count}")
+        if upgrade_ext:
+            upgraded_count = summary_stats.get("Upgraded", 0)
+            logging.info(f"  Upgraded to Extended Mix: {upgraded_count}")
         logging.info(f"  Not Matched / Error: {error_count}")
         logging.info("Batch processing complete.")
+
         
         # Reset current_url so it prompts again on the next loop!
         current_url = None

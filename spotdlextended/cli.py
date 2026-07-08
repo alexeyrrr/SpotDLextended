@@ -15,7 +15,7 @@ def parse_args():
             "  - Smart update logic (skips existing files unless forced)."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
-        epilog="Examples:\n  spotdlextended -u [URL]\n  spotdlextended --force --dir /mnt/d/Music\n  spotdlextended --help"
+        epilog="Examples:\n  spotdlextended -u [URL]\n  spotdlextended --force --dir /mnt/d/Music\n  spotdlextended -e -u [URL]  # Upgrade existing standard mixes to extended mixes\n  spotdlextended --help"
     )
 
     parser.add_argument(
@@ -47,6 +47,17 @@ def parse_args():
         "--no-extended", 
         action="store_true", 
         help="DIRECT MATCH ONLY: Disables hunting for 'Extended/Club' mixes and strictly searches for the exact track."
+    )
+
+    parser.add_argument(
+        "-e", "--upgrade-extended",
+        action="store_true",
+        help=(
+            "UPGRADE TO EXTENDED: Re-scans all tracks already on disk and replaces standard mixes with an "
+            "extended/club/original mix if one is found. Files whose filename or title tag already contain "
+            "'extended', 'original', 'club mix', or 'remix' are skipped. The old file is only deleted "
+            "after a successful replacement download."
+        )
     )
 
     parser.add_argument(
