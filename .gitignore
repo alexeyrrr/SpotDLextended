@@ -3,6 +3,7 @@
 
 # 2. Global Whitelist
 !*.py
+!*.sh
 !*.md
 !*.txt
 !*.json
