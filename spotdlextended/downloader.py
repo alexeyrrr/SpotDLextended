@@ -107,6 +107,10 @@ class Downloader:
 
                 if size > 0 and size < 1_000_000:
                     continue
+
+                # Hard Length Filter (between 1 and 12 minutes)
+                if length > 0 and (length < 60 or length > 720):
+                    continue
                     
                 # Hard Quality Filter
                 if ext == ".mp3" and bitrate < 320 and bitrate > 0:

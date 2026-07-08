@@ -48,6 +48,10 @@ pref-length-tol = -1
 length-tol = -1
 pref-min-bitrate = 320
 pref-max-samplerate = 48000
+
+# Job engine optimization
+concurrent-jobs = 5
+concurrent-searches = 3
 EOF
     echo "Created default config file at $CONFIG_FILE"
 else
