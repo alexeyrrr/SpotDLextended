@@ -57,12 +57,13 @@ logging.basicConfig(
 )
 
 
-def create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames):
+def create_m3u8_playlist(base_dir, playlist_folder_name, track_paths):
     """
-    Creates an M3U8 playlist file in the base directory.
-    The tracks inside will be prepended with the playlist folder name.
+    Creates an M3U8 playlist file in the playlist directory.
+    The tracks inside will be absolute paths.
     """
-    playlist_path = os.path.join(base_dir, f"{playlist_folder_name}.m3u8")
+    playlist_folder = os.path.join(base_dir, playlist_folder_name)
+    playlist_path = os.path.join(playlist_folder, f"{playlist_folder_name}.m3u8")
     
     # Smarter Path Output for WSL <=> Windows Interoperability
     if base_dir.startswith("/mnt/"):
@@ -79,27 +80,31 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames):
     try:
         with open(playlist_path, "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
-            for filename in track_filenames:
-                file_path = os.path.join(base_dir, playlist_folder_name, filename)
-                ext = os.path.splitext(filename)[1].lower()
+            for track_path in track_paths:
+                if os.path.isabs(track_path):
+                    file_path = track_path
+                else:
+                    file_path = os.path.join(playlist_folder, track_path)
+
+                ext = os.path.splitext(file_path)[1].lower()
                 try:
                     if ext == ".flac":
                         audio = FLAC(file_path)
                         duration = int(audio.info.length)
-                        title = audio.get("TITLE", [""])[0] or filename
+                        title = audio.get("TITLE", [""])[0] or os.path.basename(file_path)
                         artist = audio.get("ARTIST", [""])[0] or "Unknown Artist"
                         bpm = audio.get("BPM", [""])[0]
                         key = audio.get("INITIALKEY", [""])[0]
                     elif ext == ".mp3":
                         audio = MP3(file_path, ID3=ID3)
                         duration = int(audio.info.length)
-                        title = audio.tags.get("TIT2").text[0] if audio.tags and audio.tags.get("TIT2") else filename
+                        title = audio.tags.get("TIT2").text[0] if audio.tags and audio.tags.get("TIT2") else os.path.basename(file_path)
                         artist = audio.tags.get("TPE1").text[0] if audio.tags and audio.tags.get("TPE1") else "Unknown Artist"
                         bpm = audio.tags.get("TBPM").text[0] if audio.tags and audio.tags.get("TBPM") else ""
                         key = audio.tags.get("TKEY").text[0] if audio.tags and audio.tags.get("TKEY") else ""
                     else:
                         duration = -1
-                        title = filename
+                        title = os.path.basename(file_path)
                         artist = "Unknown Artist"
                         bpm = ""
                         key = ""
@@ -114,10 +119,19 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames):
                     f.write(ext_info + "\n")
                 except Exception:
                     # Fallback if parsing fails
-                    f.write(f"#EXTINF:-1,{filename}\n")
+                    f.write(f"#EXTINF:-1,{os.path.basename(file_path)}\n")
 
                 # 2. Add the track path location
-                abs_track_path = os.path.join(m3u_base, playlist_folder_name, filename)
+                if os.path.isabs(track_path):
+                    # For absolute paths, apply WSL translation if needed
+                    abs_track_path = track_path
+                    if base_dir.startswith("/mnt/") and not abs_track_path.startswith(m3u_base):
+                        # Attempt to replace base_dir prefix with m3u_base
+                        if abs_track_path.startswith(base_dir):
+                            abs_track_path = m3u_base + abs_track_path[len(base_dir):]
+                else:
+                    abs_track_path = os.path.join(m3u_base, playlist_folder_name, track_path)
+                
                 abs_track_path = abs_track_path.replace("\\\\", "/")
                 f.write(f"{abs_track_path}\n")
                 
@@ -237,11 +251,13 @@ def main():
             artist_name = t['artists'][0]['name'] if t.get('artists') else "Unknown"
             track_name = t.get('name', 'Unknown')
             duration_ms = t.get('duration_ms', t.get('durationMs', 0))
+            isrc = t.get('external_ids', {}).get('isrc', '')
             tracks.append({
                 'title': track_name, 
                 'artist': artist_name,
                 'duration_ms': duration_ms,
-                'uri': t.get('uri')
+                'uri': t.get('uri'),
+                'isrc': isrc
             })
 
 
@@ -277,7 +293,8 @@ def main():
                 playlist_folder, 
                 args.force, 
                 args.playlist_only,
-                get_extended=get_ext
+                get_extended=get_ext,
+                library_dir=args.dir
             )
             
             # Only add valid FLACs to playlist, ignoring the text error files
