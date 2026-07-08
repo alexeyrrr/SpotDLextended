@@ -66,27 +66,23 @@ class Downloader:
     # Stage 1: Loose pre-filter from sockseek results
     # ─────────────────────────────────────────────
 
-    def prefilter_candidates(self, results, spotify_duration_secs, get_extended,
-                              has_inherent_mix):
+    def heuristic_filter_and_score(self, results, spotify_title, spotify_artist, spotify_duration_secs, get_extended):
         """
-        Quickly filters the raw sockseek result list to plausible candidates using
-        only the data available without downloading:
-          - File extension must be a supported audio format
-          - Duration pre-filter:
-              Extended mode: accept anything >= (spotify_secs - 30) with NO upper cap.
-                             Extended candidates are anything >= (spotify_secs + 30).
-                             Standard fallback candidates are within ±30s of Spotify.
-              Standard mode: must be within ±60s of Spotify duration.
-
-        Returns two ranked lists: (extended_candidates, standard_candidates).
-        Extended candidates are sorted longest-first (longer = better DJ mix).
+        In-Memory Pre-Download Heuristic Engine
+        Filters and scores results based on duration, keywords, formatting, and matches.
         """
         AUDIO_EXTS = {".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a"}
         extended_kw = ["extended", "original mix", "club mix", "12\"", "12inch", "maxi",
-                       "extended mix", "dj mix", "lp version"]
-
-        extended = []
-        standard = []
+                       "extended mix", "dj mix", "lp version", "vip"]
+        
+        is_remix_target = bool(re.search(r'\bremix\b', spotify_title, flags=re.IGNORECASE))
+        core_spot_title = self.normalize_string(
+            re.sub(r'(?i)\b(extended|original|club|mix|edit|remix|remixed|vip)\b', '', 
+            re.sub(r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*', '', spotify_title))
+        )
+        norm_spot_artist = self.get_primary_artist(spotify_artist)
+        
+        candidates = []
 
         for item in results:
             username = item.get("User", {}).get("Username")
@@ -105,26 +101,61 @@ class Downloader:
                 if ext not in AUDIO_EXTS:
                     continue
 
-                # Skip suspiciously tiny files (< 1 MB — almost certainly previews)
                 if size > 0 and size < 1_000_000:
                     continue
+                    
+                # Hard Quality Filter
+                if ext == ".mp3" and bitrate < 320 and bitrate > 0:
+                    continue
 
+                # Hard Remix Filter
+                has_remix_in_file = bool(re.search(r'\bremix\b', filename, flags=re.IGNORECASE))
+                if not is_remix_target and has_remix_in_file:
+                    continue
+                if is_remix_target and not has_remix_in_file:
+                    continue
+                
+                score = 0
+                
+                # Fuzzy match title and artist (Bonus)
+                base = os.path.splitext(os.path.basename(filename))[0]
+                norm_full_path = self.normalize_string(base.replace('-', ' '))
+                artist_score = fuzz.token_set_ratio(norm_spot_artist, norm_full_path)
+                title_score = fuzz.token_set_ratio(core_spot_title, norm_full_path)
+                
+                if artist_score > 80 and title_score > 80:
+                    score += 100
+                elif artist_score > 70 and title_score > 70:
+                    score += 50
+                    
                 diff = length - spotify_duration_secs
+                
+                # Extended mix keywords check
+                filename_lower = filename.lower()
+                has_extended_kw = any(kw in filename_lower for kw in extended_kw)
+                
+                mix_type = "Standard"
+                if get_extended:
+                    if diff >= 30:
+                        score += 1000
+                        mix_type = "Extended Mix"
+                    
+                    if has_extended_kw:
+                        score += 500
+                
+                if abs(diff) <= 5:
+                    score += 50
 
-                # Duration pre-filter
-                if length > 0 and spotify_duration_secs > 0:
-                    if get_extended and not has_inherent_mix:
-                        # Extended mode:
-                        # - Accept anything NOT shorter than Spotify by more than 30s
-                        # - No upper cap: a mix can be many minutes longer
-                        if diff < -30:
-                            continue
-                    else:
-                        # Standard mode: must be within ±60s
-                        if abs(diff) > DURATION_TOLERANCE_SECS:
-                            continue
-
-                candidate = {
+                # Format & Bitrate
+                if ext == ".mp3" and bitrate >= 320:
+                    score += 20
+                elif ext in {".flac", ".wav", ".aiff", ".aif"}:
+                    score += 10
+                    
+                if has_free_slot:
+                    score += 5
+                
+                candidates.append({
                     'username': username,
                     'filename': filename,
                     'length': length,
@@ -135,49 +166,15 @@ class Downloader:
                     'upload_speed': upload_speed,
                     'has_free_slot': has_free_slot,
                     'ext': ext,
-                }
-
-                # Classify into extended vs standard fallback
-                filename_lower = filename.lower()
-                has_extended_kw = any(kw in filename_lower for kw in extended_kw)
-                is_extended = (
-                    get_extended
-                    and not has_inherent_mix
-                    and (diff >= 30 or (has_extended_kw and diff > 5))
-                )
-
-                if is_extended:
-                    extended.append(candidate)
-                else:
-                    standard.append(candidate)
-
-        # Rank: extended sorted longest-first, standard sorted by quality
-        return self._rank_extended(extended), self._rank(standard)
-
-    def _rank_extended(self, candidates):
-        """
-        Rank extended mix candidates by:
-          1. Quality — lossless (FLAC/WAV) > reported 320kbps MP3 > other MP3
-          2. Length  — longer is better (extended / original mixes are longer)
-          3. Free upload slot, then upload speed
-        """
+                    'score': score,
+                    'mix_type': mix_type
+                })
+                
         def sort_key(c):
-            is_lossless = 1 if c['ext'] in {'.flac', '.wav', '.aiff', '.aif'} else 0
-            is_mp3_320  = 1 if (c['ext'] == '.mp3' and c['bitrate'] >= 320) else 0
-            is_mp3_ok   = 1 if (c['ext'] == '.mp3' and 0 < c['bitrate'] < 320) else 0
-            free_slot   = 1 if c['has_free_slot'] else 0
-            return (is_lossless, is_mp3_320, is_mp3_ok, c['length'], free_slot, c['upload_speed'])
+            return (c['score'], c['upload_speed'])
+        
         return sorted(candidates, key=sort_key, reverse=True)
 
-    def _rank(self, candidates):
-        """Rank standard fallback candidates: quality > free slot > upload speed."""
-        def sort_key(c):
-            is_lossless = 1 if c['ext'] in {'.flac', '.wav', '.aiff', '.aif'} else 0
-            is_mp3_320  = 1 if (c['ext'] == '.mp3' and c['bitrate'] >= 320) else 0
-            is_mp3_ok   = 1 if (c['ext'] == '.mp3' and 0 < c['bitrate'] < 320) else 0
-            free_slot   = 1 if c['has_free_slot'] else 0
-            return (is_lossless, is_mp3_320, is_mp3_ok, free_slot, c['upload_speed'])
-        return sorted(candidates, key=sort_key, reverse=True)
 
     # ─────────────────────────────────────────────
     # Stage 2: Post-download metadata verification
@@ -532,153 +529,112 @@ class Downloader:
             r'\b(extended|club mix|remix|remixed|vip)\b',
             spotify_title, flags=re.IGNORECASE
         ))
-        is_remix = bool(re.search(r'\bremix\b', spotify_title, flags=re.IGNORECASE))
 
-        # ── Build search queries cascade ──────────────────────────────────
-        queries = []
-        if get_extended and not has_inherent_mix:
-            queries.append(f"{spotify_artist} {spotify_title} extended".replace("-", " "))
-            queries.append(f"{spotify_artist} {spotify_title} original mix".replace("-", " "))
-            queries.append(f"{spotify_artist} {spotify_title} club mix".replace("-", " "))
-            queries.append(f"{spotify_artist} {spotify_title} extended mix".replace("-", " "))
-        queries.append(f"{spotify_artist} {spotify_title}".replace("-", " "))
+        # ── Build single broad search query ──────────────────────────────
+        primary_artist = self.get_primary_artist(spotify_artist)
+        raw_query = f"{primary_artist} {spotify_title}".replace("-", " ")
+        search_query = raw_query
+        for word in self.search_blacklist:
+            search_query = re.sub(rf'\b{re.escape(word)}\b', '', search_query, flags=re.IGNORECASE)
+        search_query = " ".join(search_query.split())
 
         temp_dir = os.path.join(folder, ".tmp_download")
         downloaded_filepath = None
         success_candidate = None
         success_mix_type = None
+
+        logger.info(f"  [🔍] Query: '{search_query}'")
+
+        # ── Sockseek search ───────────────────────────────────────────────
+        try:
+            proc = subprocess.Popen(
+                [self.sockseek_path, search_query, "--print", "json-all"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            stdout, stderr = proc.communicate()
+            if proc.returncode != 0:
+                raise ValueError(f"sockseek error: {stderr.strip()}")
+            results = json.loads(stdout.strip())
+        except Exception as e:
+            logger.error(f"  [❌] Search failed: {e}")
+            results = []
+
+        ranked_candidates = self.heuristic_filter_and_score(
+            results, spotify_title, spotify_artist, spotify_secs, get_extended and not has_inherent_mix
+        )
+
+        if not ranked_candidates:
+            logger.debug(f"  [!] No candidates passed heuristic filter for query: '{search_query}'")
+
+        attempts = [(c, c['mix_type']) for c in ranked_candidates][:MAX_DOWNLOAD_ATTEMPTS]
         
-        for raw_query in queries:
-            search_query = raw_query
-            for word in self.search_blacklist:
-                search_query = re.sub(rf'\b{re.escape(word)}\b', '', search_query, flags=re.IGNORECASE)
-            search_query = " ".join(search_query.split())
-
-            logger.info(f"  [🔍] Query: '{search_query}'")
-
-            # ── Sockseek search ───────────────────────────────────────────────
-            try:
-                proc = subprocess.Popen(
-                    [self.sockseek_path, search_query, "--print", "json-all"],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-                )
-                stdout, stderr = proc.communicate()
-                if proc.returncode != 0:
-                    raise ValueError(f"sockseek error: {stderr.strip()}")
-                results = json.loads(stdout.strip())
-            except Exception as e:
-                logger.error(f"  [❌] Search failed: {e}")
-                continue
-                
-            # Filter results for remix logic
-            filtered_results = []
-            for item in results:
-                # keep item if it has files
-                files = item.get("Files", [])
-                if not files:
-                    continue
-                    
-                valid_files = []
-                for f in files:
-                    filename = f.get("Filename", "")
-                    has_remix_in_file = bool(re.search(r'\bremix\b', filename, flags=re.IGNORECASE))
-                    if is_remix:
-                        # allow it
-                        valid_files.append(f)
-                    else:
-                        # prohibit remix files
-                        if not has_remix_in_file:
-                            valid_files.append(f)
-                
-                if valid_files:
-                    # modify item to only include valid files
-                    new_item = item.copy()
-                    new_item["Files"] = valid_files
-                    filtered_results.append(new_item)
-
-            extended_ranked, standard_ranked = self.prefilter_candidates(
-                filtered_results, spotify_secs, get_extended, has_inherent_mix
+        for c, mix_type in attempts:
+            logger.info(
+                f"  [⬇] {c['username']} → {os.path.basename(c['filename'])} "
+                f"(Score: {c['score']}, {c['length']}s, {c['bitrate'] or '?'}kbps, {c['ext']})"
             )
 
-            if not extended_ranked and not standard_ranked:
-                logger.debug(f"  [!] No candidates passed pre-filter for query: '{search_query}'")
+            if os.path.exists(temp_dir):
+                subprocess.run(["rm", "-rf", temp_dir], check=False)
+            os.makedirs(temp_dir, exist_ok=True)
+
+            slsk_uri = f"slsk://{c['username']}/{c['filename']}"
+            try:
+                subprocess.run(
+                    [self.sockseek_path, slsk_uri, "-o", temp_dir],
+                    check=True, timeout=300
+                )
+            except Exception as e:
+                logger.warning(f"  [⚠] Download failed: {e}")
                 continue
 
-            attempts = (
-                [(c, "Extended Mix") for c in extended_ranked] +
-                [(c, "Direct Match") for c in standard_ranked]
-            )[:MAX_DOWNLOAD_ATTEMPTS]
-            
-            for c, mix_type in attempts:
-                logger.info(
-                    f"  [⬇] {c['username']} → {os.path.basename(c['filename'])} "
-                    f"({c['length']}s, {c['bitrate'] or '?'}kbps, {c['ext']})"
-                )
+            dl_files = [
+                f for f in os.listdir(temp_dir)
+                if os.path.isfile(os.path.join(temp_dir, f))
+            ]
+            if not dl_files:
+                logger.warning("  [⚠] No file in temp dir after download.")
+                continue
 
-                if os.path.exists(temp_dir):
-                    subprocess.run(["rm", "-rf", temp_dir], check=False)
-                os.makedirs(temp_dir, exist_ok=True)
+            dl_file = os.path.join(temp_dir, dl_files[0])
+            ext = os.path.splitext(dl_file)[1].lower()
 
-                slsk_uri = f"slsk://{c['username']}/{c['filename']}"
+            # ── Metadata verification (primary check) ─────────────────────
+            match_ok, match_reason = self.tags_match_spotify(dl_file, spotify_title, spotify_artist)
+            if not match_ok:
+                logger.warning(f"  [✗] Metadata mismatch — {match_reason}. Skipping.")
+                continue
+            logger.info(f"  [✓] Metadata verified — {match_reason}")
+
+            # ── Quality check / transcode ──────────────────────────────────
+            if ext == ".mp3":
+                logger.info("  [🔬] Checking MP3 spectral quality...")
+                if not self.verify_mp3_quality(dl_file):
+                    logger.warning("  [⚠] Fake 320 kbps detected. Skipping.")
+                    os.remove(dl_file)
+                    continue
+                logger.info("  [✓] True 320 kbps confirmed.")
+                subprocess.run(["mv", dl_file, mp3_path], check=True)
+                downloaded_filepath = mp3_path
+            else:
+                logger.info(f"  [🔄] Transcoding {ext.upper()} → 320 kbps MP3...")
                 try:
                     subprocess.run(
-                        [self.sockseek_path, slsk_uri, "-o", temp_dir],
-                        check=True, timeout=300
+                        ["ffmpeg", "-i", dl_file,
+                         "-vn",           # strip embedded cover art / video streams
+                         "-ab", "320k",
+                         "-map_metadata", "-1",
+                         "-y", mp3_path],
+                        check=True
                     )
-                except Exception as e:
-                    logger.warning(f"  [⚠] Download failed: {e}")
-                    continue
-
-                dl_files = [
-                    f for f in os.listdir(temp_dir)
-                    if os.path.isfile(os.path.join(temp_dir, f))
-                ]
-                if not dl_files:
-                    logger.warning("  [⚠] No file in temp dir after download.")
-                    continue
-
-                dl_file = os.path.join(temp_dir, dl_files[0])
-                ext = os.path.splitext(dl_file)[1].lower()
-
-                # ── Metadata verification (primary check) ─────────────────────
-                match_ok, match_reason = self.tags_match_spotify(dl_file, spotify_title, spotify_artist)
-                if not match_ok:
-                    logger.warning(f"  [✗] Metadata mismatch — {match_reason}. Skipping.")
-                    continue
-                logger.info(f"  [✓] Metadata verified — {match_reason}")
-
-                # ── Quality check / transcode ──────────────────────────────────
-                if ext == ".mp3":
-                    logger.info("  [🔬] Checking MP3 spectral quality...")
-                    if not self.verify_mp3_quality(dl_file):
-                        logger.warning("  [⚠] Fake 320 kbps detected. Skipping.")
-                        os.remove(dl_file)
-                        continue
-                    logger.info("  [✓] True 320 kbps confirmed.")
-                    subprocess.run(["mv", dl_file, mp3_path], check=True)
                     downloaded_filepath = mp3_path
-                else:
-                    logger.info(f"  [🔄] Transcoding {ext.upper()} → 320 kbps MP3...")
-                    try:
-                        subprocess.run(
-                            ["ffmpeg", "-i", dl_file,
-                             "-vn",           # strip embedded cover art / video streams
-                             "-ab", "320k",
-                             "-map_metadata", "-1",
-                             "-y", mp3_path],
-                            check=True
-                        )
-                        downloaded_filepath = mp3_path
-                    except Exception as e:
-                        logger.error(f"  [❌] Transcode failed: {e}")
-                        continue
+                except Exception as e:
+                    logger.error(f"  [❌] Transcode failed: {e}")
+                    continue
 
-                success_candidate = c
-                success_mix_type = mix_type
-                break
-                
-            if downloaded_filepath:
-                break # Break out of queries loop if we successfully downloaded a track
+            success_candidate = c
+            success_mix_type = mix_type
+            break
 
         # ── Cleanup ───────────────────────────────────────────────────────
         if os.path.exists(temp_dir):
