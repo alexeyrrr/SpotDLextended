@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 from spotify_scraper import SpotifyClient
 from mutagen.flac import FLAC
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3
 from spotdlextended.settings import get_settings, FALLBACK_DEFAULT_DIR
 from spotdlextended.cli import parse_args
 from spotdlextended.downloader import Downloader
@@ -78,15 +80,29 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames):
         with open(playlist_path, "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
             for filename in track_filenames:
-                # 1. Extract metadata from the local FLAC header
                 file_path = os.path.join(base_dir, playlist_folder_name, filename)
+                ext = os.path.splitext(filename)[1].lower()
                 try:
-                    audio = FLAC(file_path)
-                    duration = int(audio.info.length)
-                    title = audio.get("TITLE", [""])[0] or filename
-                    artist = audio.get("ARTIST", [""])[0] or "Unknown Artist"
-                    bpm = audio.get("BPM", [""])[0]
-                    key = audio.get("INITIALKEY", [""])[0]
+                    if ext == ".flac":
+                        audio = FLAC(file_path)
+                        duration = int(audio.info.length)
+                        title = audio.get("TITLE", [""])[0] or filename
+                        artist = audio.get("ARTIST", [""])[0] or "Unknown Artist"
+                        bpm = audio.get("BPM", [""])[0]
+                        key = audio.get("INITIALKEY", [""])[0]
+                    elif ext == ".mp3":
+                        audio = MP3(file_path, ID3=ID3)
+                        duration = int(audio.info.length)
+                        title = audio.tags.get("TIT2").text[0] if audio.tags and audio.tags.get("TIT2") else filename
+                        artist = audio.tags.get("TPE1").text[0] if audio.tags and audio.tags.get("TPE1") else "Unknown Artist"
+                        bpm = audio.tags.get("TBPM").text[0] if audio.tags and audio.tags.get("TBPM") else ""
+                        key = audio.tags.get("TKEY").text[0] if audio.tags and audio.tags.get("TKEY") else ""
+                    else:
+                        duration = -1
+                        title = filename
+                        artist = "Unknown Artist"
+                        bpm = ""
+                        key = ""
                     
                     ext_info = f"#EXTINF:{duration},{artist} - {title}"
                     if bpm or key:
@@ -97,7 +113,7 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_filenames):
                         
                     f.write(ext_info + "\n")
                 except Exception:
-                    # Fallback if FLAC parsing fails
+                    # Fallback if parsing fails
                     f.write(f"#EXTINF:-1,{filename}\n")
 
                 # 2. Add the track path location
@@ -224,7 +240,8 @@ def main():
             tracks.append({
                 'title': track_name, 
                 'artist': artist_name,
-                'duration_ms': duration_ms
+                'duration_ms': duration_ms,
+                'uri': t.get('uri')
             })
 
 
@@ -248,8 +265,8 @@ def main():
         # Start Batch Process
         logging.info(f"Starting download of {len(tracks)} tracks...")
         
-        # Initialize our Downloader class pulling api endpoints from settings 
-        downloader = Downloader(api_endpoints=settings.get("api_endpoints", []))
+        # Initialize our Downloader class
+        downloader = Downloader(spotify_client=client)
         
         downloaded_filenames = []
         summary_stats = {}

@@ -44,10 +44,9 @@ output-dir = $HOME/Music
 
 # Optional: set preferred format (uncomment to enable)
 pref-format = mp3,flac
-pref-length-tol = 3
+pref-length-tol = 400
 pref-min-bitrate = 320
 pref-max-samplerate = 48000
-pref-length-tol = 400
 EOF
     echo "Created default config file at $CONFIG_FILE"
 else
