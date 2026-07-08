@@ -134,6 +134,12 @@ class Downloader:
                 filename_lower = filename.lower()
                 has_extended_kw = any(kw in filename_lower for kw in extended_kw)
                 
+                # Penalize "Clean" versions
+                if re.search(r'\([^)]*\bclean\b[^)]*\)|\[[^\]]*\bclean\b[^\]]*\]', filename_lower):
+                    score -= 500
+                elif re.search(r'\bclean\b', filename_lower):
+                    score -= 100
+                
                 mix_type = "Standard"
                 if get_extended:
                     if diff >= 30:
