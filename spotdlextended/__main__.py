@@ -175,6 +175,9 @@ def regenerate_playlist(base_dir, playlist_folder_name):
 def main():
     parser, args = parse_args()
     
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        
     # Load settings and handle onboarding if it's the first run
     settings = get_settings()
     if not args.dir:
@@ -287,7 +290,7 @@ def main():
         logging.info(f"Starting download of {len(tracks)} tracks...")
         
         # Initialize our Downloader class
-        downloader = Downloader(spotify_client=client)
+        downloader = Downloader(spotify_client=client, debug=args.debug)
         
         downloaded_filenames = []
         summary_stats = {}

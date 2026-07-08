@@ -61,6 +61,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        "-d", "--debug", 
+        action="store_true", 
+        help="Enable verbose debugging output and pass it to sockseek."
+    )
+
+    parser.add_argument(
         "-r", "--regenerate",
         type=str,
         metavar="FOLDER_PATH",

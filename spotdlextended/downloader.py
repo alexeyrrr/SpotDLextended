@@ -22,10 +22,11 @@ DURATION_TOLERANCE_SECS = 60
 
 
 class Downloader:
-    def __init__(self, api_endpoints=None, search_blacklist=None, spotify_client=None):
+    def __init__(self, api_endpoints=None, search_blacklist=None, spotify_client=None, debug=False):
         self.search_blacklist = search_blacklist or ["radio edit", "radio mix", "radio version"]
         self.spotify_client = spotify_client
         self.sockseek_path = self.get_sockseek_path()
+        self.debug = debug
 
     # ─────────────────────────────────────────────
     # Static helpers
@@ -631,13 +632,18 @@ class Downloader:
 
         # ── Sockseek search ───────────────────────────────────────────────
         try:
+            cmd = [self.sockseek_path, search_query, "--print", "json-all"]
+            if self.debug:
+                cmd.append("--debug")
             proc = subprocess.Popen(
-                [self.sockseek_path, search_query, "--print", "json-all"],
+                cmd,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
             stdout, stderr = proc.communicate()
             if proc.returncode != 0:
                 raise ValueError(f"sockseek error: {stderr.strip()}")
+            if self.debug and stderr.strip():
+                logger.debug(f"Sockseek search stderr:\n{stderr.strip()}")
             results = json.loads(stdout.strip())
         except Exception as e:
             logger.error(f"  [❌] Search failed: {e}")
@@ -664,8 +670,11 @@ class Downloader:
 
             slsk_uri = f"slsk://{c['username']}/{c['filename']}"
             try:
+                cmd = [self.sockseek_path, slsk_uri, "-o", temp_dir]
+                if self.debug:
+                    cmd.append("--debug")
                 subprocess.run(
-                    [self.sockseek_path, slsk_uri, "-o", temp_dir],
+                    cmd,
                     check=True, timeout=300
                 )
             except Exception as e:
