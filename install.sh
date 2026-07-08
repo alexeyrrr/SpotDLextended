@@ -34,10 +34,21 @@ CONFIG_FILE="$CONFIG_DIR/sockseek.conf"
 # Create the directory if it doesn't exist
 mkdir -p "$CONFIG_DIR"
 
-# Create config file if it doesn't exist
+# Create sockseek.conf file if it doesn't exist
 if [ ! -f "$CONFIG_FILE" ]; then
-    # Using printf to ensure clean, simple key=value format
-    printf "username=your_username_here\npassword=your_password_here\noutput-dir=%s/Music\n" "$HOME" > "$CONFIG_FILE"
+    cat <<EOF > "$CONFIG_FILE"
+# Sockseek Configuration
+username = your_username_here
+password = your_password_here
+output-dir = $HOME/Music
+
+# Optional: set preferred format (uncomment to enable)
+pref-format = mp3,flac
+pref-length-tol = 3
+pref-min-bitrate = 320
+pref-max-samplerate = 48000
+pref-length-tol = 400
+EOF
     echo "Created default config file at $CONFIG_FILE"
 else
     echo "Config file already exists, skipping creation."

@@ -9,7 +9,8 @@ dependencies = [
     "requests",
     "rapidfuzz",
     "mutagen",
-    "SpotifyScraper"
+    "SpotifyScraper",
+    "sockseek"
 ]
 description = "Spotify to FLAC Extended Mix Downloader"
 readme = "readme.md"
