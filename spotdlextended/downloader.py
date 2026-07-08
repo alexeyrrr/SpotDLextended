@@ -123,6 +123,11 @@ class Downloader:
                 if is_remix_target and not has_remix_in_file:
                     continue
                 
+                # Hard Pre-mixed Filter
+                # Eliminates tracks that are part of a continuous DJ mix
+                if re.search(r'\bmixed\b', filename, flags=re.IGNORECASE):
+                    continue
+                
                 score = 0
                 
                 # Fuzzy match title and artist (Bonus)
