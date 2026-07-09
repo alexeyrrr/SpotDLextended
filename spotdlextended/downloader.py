@@ -564,7 +564,9 @@ class Downloader:
             if isrc:
                 tags.add(TSRC(encoding=3, text=isrc))
             if spotify_uri:
-                tags.add(COMM(encoding=3, lang='eng', desc='', text=[spotify_uri]))
+                # Convert 'spotify:track:ID' to the official web URL
+                spotify_url = spotify_uri.replace("spotify:track:", "https://open.spotify.com/track/")
+                tags.add(COMM(encoding=3, lang='eng', desc='', text=[spotify_url]))
 
             # Cover art from Spotify embed API
             cover_data = None
