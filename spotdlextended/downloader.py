@@ -10,7 +10,7 @@ from rapidfuzz import fuzz
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, error as ID3Error
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, TSRC, error as ID3Error
 
 logger = logging.getLogger(__name__)
 
@@ -547,19 +547,22 @@ class Downloader:
         return title
 
 
-    def tag_mp3(self, file_path, resolved_title, spotify_artist, spotify_uri):
+    def tag_mp3(self, file_path, resolved_title, spotify_artist, spotify_uri, isrc=None): 
         """Strips all existing tags and writes clean Spotify-sourced metadata."""
         try:
-            # Load existing tags (written by ffmpeg during transcode) or create fresh
             try:
                 tags = ID3(file_path)
-                tags.delete()  # Wipe all existing frames cleanly
+                tags.delete()
             except ID3Error:
                 tags = ID3()
-
+                
             tags.add(TIT2(encoding=3, text=resolved_title))
             tags.add(TPE1(encoding=3, text=spotify_artist))
             tags.add(TALB(encoding=3, text=f"{resolved_title} Single"))
+            
+            # Inject the ISRC if we have one
+            if isrc:
+                tags.add(TSRC(encoding=3, text=isrc))
 
             # Cover art from Spotify embed API
             cover_data = None
@@ -616,6 +619,7 @@ class Downloader:
         spotify_artist = track_data['artist']
         spotify_duration_ms = track_data.get('duration_ms', 0)
         spotify_uri = track_data.get('uri')
+        spotify_isrc = track_data.get('isrc')
         spotify_secs = spotify_duration_ms / 1000.0
 
         safe_base = self.sanitize_filename(f"{spotify_title} - {spotify_artist}")
@@ -853,7 +857,7 @@ class Downloader:
         # ── Tag ────────────────────────────────────────────────────────────
         resolved_title = self.determine_mix_title(spotify_title, os.path.basename(success_candidate['filename']))
         self.tag_mp3(
-            downloaded_filepath, resolved_title, spotify_artist, spotify_uri
+            downloaded_filepath, resolved_title, spotify_artist, spotify_uri, isrc=spotify_isrc
         )
 
         # Mark as Upgraded when a pre-existing standard mix was replaced
