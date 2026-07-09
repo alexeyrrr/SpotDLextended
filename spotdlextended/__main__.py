@@ -77,6 +77,8 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_paths):
     else:
         m3u_base = base_dir
 
+    xml_tracks = []
+
     try:
         with open(playlist_path, "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
@@ -84,30 +86,45 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_paths):
                 if os.path.isabs(track_path):
                     file_path = track_path
                 else:
-                    file_path = os.path.join(playlist_folder, track_path)
+                    file_path = os.path.abspath(os.path.join(playlist_folder, track_path))
 
                 ext = os.path.splitext(file_path)[1].lower()
+                
+                title = ""
+                artist = ""
+                album = ""
+                bpm = ""
+                key = ""
+                isrc = ""
+                duration = -1
+                
                 try:
                     if ext == ".flac":
                         audio = FLAC(file_path)
                         duration = int(audio.info.length)
                         title = audio.get("TITLE", [""])[0] or os.path.basename(file_path)
                         artist = audio.get("ARTIST", [""])[0] or "Unknown Artist"
+                        album = audio.get("ALBUM", [""])[0] or ""
                         bpm = audio.get("BPM", [""])[0]
                         key = audio.get("INITIALKEY", [""])[0]
+                        isrc = audio.get("ISRC", [""])[0] or ""
                     elif ext == ".mp3":
                         audio = MP3(file_path, ID3=ID3)
                         duration = int(audio.info.length)
                         title = audio.tags.get("TIT2").text[0] if audio.tags and audio.tags.get("TIT2") else os.path.basename(file_path)
                         artist = audio.tags.get("TPE1").text[0] if audio.tags and audio.tags.get("TPE1") else "Unknown Artist"
+                        album = audio.tags.get("TALB").text[0] if audio.tags and audio.tags.get("TALB") else ""
                         bpm = audio.tags.get("TBPM").text[0] if audio.tags and audio.tags.get("TBPM") else ""
                         key = audio.tags.get("TKEY").text[0] if audio.tags and audio.tags.get("TKEY") else ""
+                        isrc = audio.tags.get("TSRC").text[0] if audio.tags and audio.tags.get("TSRC") else ""
                     else:
                         duration = -1
                         title = os.path.basename(file_path)
                         artist = "Unknown Artist"
+                        album = ""
                         bpm = ""
                         key = ""
+                        isrc = ""
                     
                     ext_info = f"#EXTINF:{duration},{artist} - {title}"
                     if bpm or key:
@@ -119,7 +136,9 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_paths):
                     f.write(ext_info + "\n")
                 except Exception:
                     # Fallback if parsing fails
-                    f.write(f"#EXTINF:-1,{os.path.basename(file_path)}\n")
+                    title = os.path.basename(file_path)
+                    artist = "Unknown Artist"
+                    f.write(f"#EXTINF:-1,{title}\n")
 
                 # 2. Add the track path location
                 if os.path.isabs(track_path):
@@ -134,8 +153,38 @@ def create_m3u8_playlist(base_dir, playlist_folder_name, track_paths):
                 
                 abs_track_path = abs_track_path.replace("\\\\", "/")
                 f.write(f"{abs_track_path}\n")
+
+                xml_tracks.append({
+                    'title': title,
+                    'artist': artist,
+                    'album': album,
+                    'bpm': bpm,
+                    'key': key,
+                    'isrc': isrc,
+                    'absolute_path': file_path,
+                    'duration': duration if duration != -1 else None
+                })
                 
         logging.info(f"  [✓] Created metadata-rich playlist: {playlist_path}")
+        
+        # Export to Rekordbox XML
+        if xml_tracks:
+            try:
+                from spotdlextended.xml_exporter import RekordboxXMLExporter
+                output_xml_path = os.path.join(base_dir, "rekordbox.xml")
+                
+                settings = get_settings()
+                path_mapping = settings.get("rekordbox_path_mapping", None)
+                
+                exporter = RekordboxXMLExporter(path_mapping=path_mapping)
+                exporter.export(
+                    tracks=xml_tracks,
+                    playlist_name=playlist_folder_name,
+                    output_xml_path=output_xml_path
+                )
+            except Exception as xml_err:
+                logging.error(f"  [❌] Error generating Rekordbox XML: {xml_err}")
+                
     except Exception as e:
         logging.error(f"  [❌] Error creating playlist: {e}")
 
