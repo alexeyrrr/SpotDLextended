@@ -10,7 +10,7 @@ from rapidfuzz import fuzz
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, TSRC, error as ID3Error
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, TSRC, COMM, error as ID3Error
 
 logger = logging.getLogger(__name__)
 
@@ -560,9 +560,11 @@ class Downloader:
             tags.add(TPE1(encoding=3, text=spotify_artist))
             tags.add(TALB(encoding=3, text=f"{resolved_title} Single"))
             
-            # Inject the ISRC if we have one
+            # Inject the Spotify & ISRC URIs into the Comment field
             if isrc:
                 tags.add(TSRC(encoding=3, text=isrc))
+            if spotify_uri:
+                tags.add(COMM(encoding=3, lang='eng', desc='', text=[spotify_uri]))
 
             # Cover art from Spotify embed API
             cover_data = None
