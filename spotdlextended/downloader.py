@@ -418,22 +418,64 @@ class Downloader:
     def verify_mp3_quality(self, file_path):
         """
         Spectral FFT check: returns False if the MP3 is a fake/upscaled 320 kbps.
-        True 320 kbps files retain energy above 18.5 kHz.
+        Dynamically finds the loudest part of the track before testing.
         """
         try:
-            for seek in ("60", "10"):
-                cmd = [
-                    "ffmpeg", "-ss", seek, "-t", "30",
-                    "-i", file_path,
-                    "-f", "s16le", "-ac", "1", "-ar", "44100",
-                    "-y", "-"
-                ]
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout_data, _ = proc.communicate()
-                if proc.returncode == 0 and stdout_data:
-                    break
-            else:
-                logger.warning("FFmpeg could not extract samples for quality check.")
+            # =========================================================
+            # STEP 1: Find the loudest part of the track dynamically
+            # =========================================================
+            cmd_energy = [
+                "ffmpeg", "-nostats", "-i", file_path, 
+                "-filter_complex", "ebur128=peak=true", 
+                "-f", "null", "-"
+            ]
+            
+            # We use text=True here so stderr is returned as a string for easy parsing
+            proc_energy = subprocess.Popen(
+                cmd_energy, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                text=True
+            )
+            _, stderr_data = proc_energy.communicate()
+
+            peak_time = 60.0  # Fallback timestamp if parsing fails
+            max_loudness = -999.0
+            
+            # EBUR128 logs look like this: 
+            # [Parsed_ebur128_0 ...] t: 125.1  TARGET:-23 LUFS  M:-11.2 S:-9.4 ...
+            # We want to extract 't' (time) and 'S' (Short-term loudness)
+            pattern = re.compile(r"t:\s*([\d.]+).*?S:\s*([-0-9.]+)")
+
+            for line in stderr_data.splitlines():
+                match = pattern.search(line)
+                if match:
+                    t = float(match.group(1))
+                    s_loudness = float(match.group(2))
+                    if s_loudness > max_loudness:
+                        max_loudness = s_loudness
+                        peak_time = t
+
+            # Center a 30-second window around the peak (start 15s before the loudest moment)
+            seek_time = str(max(0, int(peak_time - 15)))
+            logger.info(f"    Found peak loudness at ~{int(peak_time)}s. Analyzing 30s window at {seek_time}s.")
+
+            # =========================================================
+            # STEP 2: Extract and analyze that specific 30-second window
+            # =========================================================
+            cmd = [
+                "ffmpeg", "-ss", seek_time, "-t", "30",
+                "-i", file_path,
+                "-f", "s16le", "-ac", "1", "-ar", "44100",
+                "-y", "-"
+            ]
+            
+            # text is False here (default) because we need raw bytes for numpy
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout_data, _ = proc.communicate()
+            
+            if proc.returncode != 0 or not stdout_data:
+                logger.warning("    FFmpeg could not extract samples for quality check.")
                 return False
 
             samples = np.frombuffer(stdout_data, dtype=np.int16)
@@ -453,26 +495,30 @@ class Downloader:
                 for i in range(num_windows)
             ]
 
-            avg_spectrum = np.mean(fft_spectra, axis=0)
-            power_db = 20 * np.log10(avg_spectrum + 1e-8)
+            # =========================================================
+            # STEP 3: Frequency logic
+            # =========================================================
+            peak_spectrum = np.max(fft_spectra, axis=0)
+            power_db = 20 * np.log10(peak_spectrum + 1e-8)
             power_db_norm = power_db - np.max(power_db)
 
             freqs = np.fft.rfftfreq(window_size, d=1 / 44100)
             idx = lambda hz: int(np.searchsorted(freqs, hz))
 
-            max_10_15 = np.max(power_db_norm[idx(10000):idx(15000)])
-            max_18_20 = np.max(power_db_norm[idx(18500):idx(20000)])
+            mid_highs = np.max(power_db_norm[idx(12000):idx(15000)])  
+            shelf_16k = np.max(power_db_norm[idx(16000):idx(17000)])  
+            shelf_18k = np.max(power_db_norm[idx(18500):idx(19500)])  
 
-            # If music energy exists in 10–15 kHz but is gone by 18.5 kHz → fake 320k
-            if max_10_15 >= -50.0 and max_18_20 < -50.0:
-                logger.warning(
-                    f"    Spectral cutoff detected: 10–15k={max_10_15:.1f}dB, "
-                    f"18.5–20k={max_18_20:.1f}dB → fake 320 kbps"
-                )
+            if mid_highs >= -40.0 and shelf_16k < -65.0:
+                logger.warning("    Fake 320k: Hard brickwall cutoff detected at 16 kHz (Source likely 128 kbps).")
+                return False
+
+            elif shelf_16k >= -45.0 and shelf_18k < -60.0:
+                logger.warning("    Fake 320k: Hard brickwall cutoff detected at 18.5 kHz (Source likely 192 kbps).")
                 return False
 
             logger.info(
-                f"    Spectral OK: 10–15k={max_10_15:.1f}dB, 18.5–20k={max_18_20:.1f}dB"
+                f"    Spectral OK: 16k Shelf={shelf_16k:.1f}dB, 18.5k-19.5k Shelf={shelf_18k:.1f}dB"
             )
             return True
 
