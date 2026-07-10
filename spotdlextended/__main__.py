@@ -15,6 +15,42 @@ DEFAULT_PLAYLIST_URL = "https://open.spotify.com/playlist/5wr9DG59AWCoXMfUqd4KFW
 
 # --- DOWNLOAD DIRECTORY SETUP ---
 
+#Ensures sockseek config is present 
+def ensure_sockseek_config():
+    if platform.system() == "Windows":
+        appdata = os.environ.get("APPDATA")
+        if not appdata:
+            return
+        config_dir = os.path.join(appdata, "sockseek")
+    else:
+        config_dir = os.path.expanduser("~/.config/sockseek")
+        
+    config_file = os.path.join(config_dir, "sockseek.conf")
+    
+    if not os.path.exists(config_file):
+        os.makedirs(config_dir, exist_ok=True)
+        default_template = """# Sockseek Configuration
+username = your_soulseek_username
+password = your_soulseek_password
+output-dir = C:\\Users\\YOURUSERNAME\\Music
+
+# Optional: set preferred format
+pref-format = mp3,flac
+pref-length-tol = -1
+length-tol = -1
+pref-min-bitrate = 320
+pref-max-samplerate = 48000
+
+# Job engine optimization
+concurrent-jobs = 5
+concurrent-searches = 3
+"""
+    with open(config_file, "w", encoding="utf-8") as f:
+        f.write(default_template)
+        
+    print(f"\n[!] Initialized default config at: {config_file}")
+    print("[!] Please open this file and update your Soulseek username and password.\n")
+    
 def translate_path_to_os(path_str):
     """
     Translates a Windows-style path (e.g., 'C:/Music/' or '%USERPROFILE%/Music/')
