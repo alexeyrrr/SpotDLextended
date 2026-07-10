@@ -222,6 +222,9 @@ def regenerate_playlist(base_dir, playlist_folder_name):
 
 
 def main():
+    # Run the sockseek config file check 
+    ensure_sockseek_config()
+
     parser, args = parse_args()
     
     if args.debug:

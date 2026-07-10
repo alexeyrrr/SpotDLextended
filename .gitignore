@@ -23,6 +23,8 @@
 # 4. OVERRIDE: ALWAYS allow the source code package structure
 !spotdlextended/
 !spotdlextended/**
+!bin/
+!bin/sockseek.exe
 
 # 5. FINAL SAFETY IGNORES (These must be at the bottom to stay ignored)
 .venv/

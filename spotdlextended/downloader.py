@@ -29,15 +29,62 @@ class Downloader:
         self.debug = debug
         self.temp_peer_blacklist = set()
 
+
+    def ensure_sockseek_config():
+    if platform.system() == "Windows":
+        appdata = os.environ.get("APPDATA")
+        if not appdata:
+            return
+        config_dir = os.path.join(appdata, "sockseek")
+    else:
+        config_dir = os.path.expanduser("~/.config/sockseek")
+        
+    config_file = os.path.join(config_dir, "sockseek.conf")
+    
+    if not os.path.exists(config_file):
+        os.makedirs(config_dir, exist_ok=True)
+        default_template = """# Sockseek Configuration
+username = your_soulseek_username
+password = your_soulseek_password
+output-dir = C:\\Users\\YOURUSERNAME\\Music
+
+# Optional: set preferred format
+pref-format = mp3,flac
+pref-length-tol = -1
+length-tol = -1
+pref-min-bitrate = 320
+pref-max-samplerate = 48000
+
+# Job engine optimization
+concurrent-jobs = 5
+concurrent-searches = 3
+"""
+        with open(config_file, "w", encoding="utf-8") as f:
+            f.write(default_template)
+            
+        print(f"\n[!] Initialized default config at: {config_file}")
+        print("[!] Please open this file and update your Soulseek username and password.\n")
+
     # ─────────────────────────────────────────────
     # Static helpers
     # ─────────────────────────────────────────────
 
     @staticmethod
     def get_sockseek_path():
+        # 1. Check if running as a packaged PyInstaller executable
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            # sys._MEIPASS is the temp folder where PyInstaller extracts bundled files
+            base_path = sys._MEIPASS
+            # Note: Assuming the Windows binary is named sockseek.exe
+            bundled_exe = os.path.join(base_path, 'sockseek.exe') 
+            if os.path.exists(bundled_exe):
+                return bundled_exe
+
+        # 2. Fallback for local development environment
         local_path = os.path.expanduser("~/.local/bin/sockseek")
         if os.path.exists(local_path):
             return local_path
+            
         return "sockseek"
 
     @staticmethod
