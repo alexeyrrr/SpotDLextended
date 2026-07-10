@@ -27,6 +27,7 @@ class Downloader:
         self.spotify_client = spotify_client
         self.sockseek_path = self.get_sockseek_path()
         self.debug = debug
+        self.temp_peer_blacklist = set()
 
     # ─────────────────────────────────────────────
     # Static helpers
@@ -90,6 +91,8 @@ class Downloader:
 
         for item in results:
             username = item.get("User", {}).get("Username")
+            if username and username in self.temp_peer_blacklist:
+                continue
             upload_speed = item.get("User", {}).get("UploadSpeed", 0)
             has_free_slot = item.get("User", {}).get("HasFreeUploadSlot", False)
 
@@ -757,10 +760,33 @@ class Downloader:
                 cmd = [self.sockseek_path, slsk_uri, "-o", temp_dir]
                 if self.debug:
                     cmd.append("--debug")
-                subprocess.run(
+                
+                # Capture both stdout and stderr to evaluate rejection outputs
+                res = subprocess.run(
                     cmd,
-                    check=True, timeout=300
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=300
                 )
+                
+                stdout_dl = res.stdout or ""
+                stderr_dl = res.stderr or ""
+                
+                # Check for blacklist-triggering rejections
+                too_many_files = "Transfer rejected: Too many files" in stdout_dl or "Transfer rejected: Too many files" in stderr_dl
+                country_blocked = "Banned (Sorry, your country is blocked)" in stdout_dl or "Banned (Sorry, your country is blocked)" in stderr_dl
+                
+                if too_many_files or country_blocked:
+                    if too_many_files:
+                        logger.warning(f"  [⚠] Blacklisted peer '{c['username']}' for this session: Too many files queue limit.")
+                    else:
+                        logger.warning(f"  [⚠] Blacklisted peer '{c['username']}' for this session: Country is blocked.")
+                    self.temp_peer_blacklist.add(c['username'])
+                    continue
+                
+                if res.returncode != 0:
+                    raise subprocess.CalledProcessError(res.returncode, cmd, output=stdout_dl, stderr=stderr_dl)
             except Exception as e:
                 logger.warning(f"  [⚠] Download failed: {e}")
                 continue
