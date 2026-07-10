@@ -9,7 +9,7 @@ dependencies = [
     "requests",
     "rapidfuzz",
     "mutagen",
-    "SpotifyScraper",
+    "SpotifyScraper>=2.1.5",
     "numpy"
 ]
 description = "Spotify to FLAC Extended Mix Downloader"

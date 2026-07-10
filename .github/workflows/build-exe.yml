@@ -33,10 +33,10 @@ jobs:
       run: |
         if (Test-Path "icon.ico") {
           Write-Host "Found icon.ico, adding to build..."
-          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended --add-binary "bin/sockseek.exe;." --icon=icon.ico spotdlextended/__main__.py
+          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended --collect-all spotify_scraper --add-binary "bin/sockseek.exe;." --icon=icon.ico spotdlextended/__main__.py
         } else {
           Write-Host "No icon.ico found, building without an icon..."
-          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended --add-binary "bin/sockseek.exe;." spotdlextended/__main__.py
+          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended --collect-all spotify_scraper --add-binary "bin/sockseek.exe;." spotdlextended/__main__.py
         }
         
     - name: Upload Artifact
