@@ -11,7 +11,6 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
-      pull-requests: write
     
     steps:
     - uses: actions/checkout@v4
@@ -20,6 +19,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+        cache: 'pip' # Speeds up subsequent runs
         
     - name: Install dependencies
       run: |
@@ -28,19 +28,14 @@ jobs:
         pip install .
         
     - name: Build EXE with PyInstaller
-      shell: bash
       run: |
-        if [ -f "icon.ico" ]; then
-          echo "Found icon.ico, adding to build..."
-          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended \
-            --add-binary "bin/sockseek.exe;." \
-            --icon=icon.ico spotdlextended/__main__.py
-        else
-          echo "No icon.ico found, building without an icon..."
-          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended \
-            --add-binary "bin/sockseek.exe;." \
-            spotdlextended/__main__.py
-        fi
+        if (Test-Path "icon.ico") {
+          Write-Host "Found icon.ico, adding to build..."
+          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended --add-binary "bin/sockseek.exe;." --icon=icon.ico spotdlextended/__main__.py
+        } else {
+          Write-Host "No icon.ico found, building without an icon..."
+          pyinstaller --onefile --name SpotDLextended --collect-all spotdlextended --add-binary "bin/sockseek.exe;." spotdlextended/__main__.py
+        }
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
