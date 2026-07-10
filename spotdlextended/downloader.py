@@ -1,4 +1,6 @@
 import os
+import sys
+import platform
 import subprocess
 import re
 import logging
@@ -30,20 +32,27 @@ class Downloader:
         self.temp_peer_blacklist = set()
 
 
+
+
+    # ─────────────────────────────────────────────
+    # Static helpers
+    # ─────────────────────────────────────────────
+   
+    @staticmethod
     def ensure_sockseek_config():
-    if platform.system() == "Windows":
-        appdata = os.environ.get("APPDATA")
-        if not appdata:
-            return
-        config_dir = os.path.join(appdata, "sockseek")
-    else:
-        config_dir = os.path.expanduser("~/.config/sockseek")
+        if platform.system() == "Windows":
+            appdata = os.environ.get("APPDATA")
+            if not appdata:
+                return
+            config_dir = os.path.join(appdata, "sockseek")
+        else:
+            config_dir = os.path.expanduser("~/.config/sockseek")
+            
+        config_file = os.path.join(config_dir, "sockseek.conf")
         
-    config_file = os.path.join(config_dir, "sockseek.conf")
-    
-    if not os.path.exists(config_file):
-        os.makedirs(config_dir, exist_ok=True)
-        default_template = """# Sockseek Configuration
+        if not os.path.exists(config_file):
+            os.makedirs(config_dir, exist_ok=True)
+            default_template = """# Sockseek Configuration
 username = your_soulseek_username
 password = your_soulseek_password
 output-dir = C:\\Users\\YOURUSERNAME\\Music
@@ -64,10 +73,6 @@ concurrent-searches = 3
             
         print(f"\n[!] Initialized default config at: {config_file}")
         print("[!] Please open this file and update your Soulseek username and password.\n")
-
-    # ─────────────────────────────────────────────
-    # Static helpers
-    # ─────────────────────────────────────────────
 
     @staticmethod
     def get_sockseek_path():
