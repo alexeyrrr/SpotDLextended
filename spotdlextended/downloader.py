@@ -6,6 +6,7 @@ import json
 import unicodedata
 import requests
 import numpy as np
+from datetime import datetime, timezone
 from rapidfuzz import fuzz
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
@@ -28,6 +29,32 @@ class Downloader:
         self.sockseek_path = self.get_sockseek_path()
         self.debug = debug
         self.temp_peer_blacklist = set()
+
+    def _get_sync_history_path(self, folder):
+        if not folder or not os.path.isdir(folder):
+            return None
+        return os.path.join(folder, ".sync_history.json")
+
+    def _load_sync_history(self, folder):
+        path = self._get_sync_history_path(folder)
+        if not path or not os.path.exists(path):
+            return {}
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.debug(f"Failed to load sync history from {path}: {e}")
+            return {}
+
+    def _save_sync_history(self, folder, history):
+        path = self._get_sync_history_path(folder)
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(history, f, indent=2)
+        except Exception as e:
+            logger.warning(f"Failed to write sync history to {path}: {e}")
 
     # ─────────────────────────────────────────────
     # Static helpers
@@ -685,6 +712,35 @@ class Downloader:
                 # Return the absolute path so playlist generator can link it directly
                 return existing_track, "Library Match"
 
+        # ── Cooldown Logic (14-Day Gate) ──────────────────────────────────
+        track_exists_locally = False
+        if folder:
+            for ext in [".mp3", ".flac"]:
+                p = os.path.join(folder, f"{safe_base}{ext}")
+                if os.path.exists(p) and os.path.getsize(p) > 0:
+                    track_exists_locally = True
+                    break
+
+        if spotify_uri and not track_exists_locally:
+            history = self._load_sync_history(folder)
+            if spotify_uri in history:
+                try:
+                    last_attempted_str = history[spotify_uri].get("last_attempted")
+                    if last_attempted_str:
+                        if last_attempted_str.endswith("Z"):
+                            last_attempted_str = last_attempted_str[:-1] + "+00:00"
+                        last_attempted = datetime.fromisoformat(last_attempted_str)
+                        if last_attempted.tzinfo is None:
+                            last_attempted = last_attempted.replace(tzinfo=timezone.utc)
+                        
+                        now = datetime.now(timezone.utc)
+                        delta = now - last_attempted
+                        if delta.days < 14:
+                            logger.info(f"  [⏳] Track is on search cooldown (failed {delta.days} days ago), skipping Soulseek search: {spotify_title} — {spotify_artist}")
+                            return None, "Skipped"
+                except Exception as e:
+                    logger.debug(f"Failed to parse sync history cooldown: {e}")
+
         # ── Detect if track is already a mix ─────────────────────────────
         has_inherent_mix = bool(re.search(
             r'\b(extended|club mix|remix|remixed|vip)\b',
@@ -850,6 +906,17 @@ class Downloader:
 
         if not downloaded_filepath:
             logger.warning(f"  [!] All queries and candidates failed for: {spotify_title}")
+            if spotify_uri and folder:
+                try:
+                    history = self._load_sync_history(folder)
+                    history[spotify_uri] = {
+                        "last_attempted": datetime.now(timezone.utc).isoformat(),
+                        "status": "failed_not_found"
+                    }
+                    self._save_sync_history(folder, history)
+                except Exception as e:
+                    logger.debug(f"Failed to update sync history on download failure: {e}")
+
             if upgrade_extended and existing_in_playlist:
                 logger.info(f"  [-] No extended mix found — keeping existing file unchanged.")
                 return os.path.basename(existing_in_playlist), "Skipped"
@@ -889,6 +956,16 @@ class Downloader:
         self.tag_mp3(
             downloaded_filepath, resolved_title, spotify_artist, spotify_uri, isrc=spotify_isrc
         )
+
+        # Remove from sync history on success
+        if spotify_uri and folder:
+            try:
+                history = self._load_sync_history(folder)
+                if spotify_uri in history:
+                    del history[spotify_uri]
+                    self._save_sync_history(folder, history)
+            except Exception as e:
+                logger.debug(f"Failed to remove track from sync history on download success: {e}")
 
         # Mark as Upgraded when a pre-existing standard mix was replaced
         final_mix_type = success_mix_type
