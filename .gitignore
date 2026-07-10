@@ -12,6 +12,7 @@
 !*.toml
 !LICENSE
 !.gitignore
+!.gitattributes
 !requirements.txt
 !.github/
 !.github/**
