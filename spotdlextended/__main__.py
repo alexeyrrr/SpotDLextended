@@ -306,7 +306,7 @@ def main():
         # Extract Title, Artist, and Duration into a structured list
         tracks = []
         for t in playlist.get('tracks', []):
-            artist_name = t['artists'][0]['name'] if t.get('artists') else "Unknown"
+            artist_name = ", ".join([a['name'] for a in t['artists']]) if t.get('artists') else "Unknown"
             track_name = t.get('name', 'Unknown')
             duration_ms = t.get('duration_ms', t.get('durationMs', 0))
             isrc = t.get('external_ids', {}).get('isrc', '')

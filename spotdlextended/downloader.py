@@ -13,7 +13,7 @@ from rapidfuzz import fuzz
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, TSRC, COMM, error as ID3Error
+from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, APIC, TSRC, COMM, error as ID3Error
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +108,28 @@ class Downloader:
                          artist_str, flags=re.IGNORECASE)
         return Downloader.normalize_string(parts[0])
 
+    @staticmethod
+    def normalize_all_artists(artist_str):
+        """
+        Splits a multi-artist string by all common delimiters (comma, &, feat., etc.),
+        normalizes each individual name, and returns a single joined string of all tokens.
+
+        This allows order-insensitive comparison via token_set_ratio:
+          "HUGEL, Imael Angel, Ultra Naté"  →  "hugel imael angel ultra nate"
+          "Ultra Nate, Hugel, Imael Angel"  →  "ultra nate hugel imael angel"
+        Both score 100 when compared with fuzz.token_set_ratio.
+        """
+        if not artist_str:
+            return ""
+        # Strip parentheticals (e.g. "(DJ)") before splitting
+        clean = re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', artist_str)
+        parts = re.split(
+            r'\s*(?:,|&|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b|\band\b|\bwith\b|\bx\b)\s*',
+            clean, flags=re.IGNORECASE
+        )
+        normalized = [Downloader.normalize_string(p) for p in parts if p.strip()]
+        return " ".join(normalized)
+
     # ─────────────────────────────────────────────
     # Stage 1: Loose pre-filter from sockseek results
     # ─────────────────────────────────────────────
@@ -127,7 +149,7 @@ class Downloader:
             re.sub(r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*', '', 
             re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', spotify_title)))
         )
-        norm_spot_artist = self.get_primary_artist(spotify_artist)
+        norm_spot_artist = self.normalize_all_artists(spotify_artist)
         
         candidates = []
 
@@ -347,7 +369,7 @@ class Downloader:
         spotify_artist = track_data['artist']
         target_isrc = track_data.get('isrc')
         
-        norm_spot_artist = self.get_primary_artist(spotify_artist)
+        norm_spot_artist = self.normalize_all_artists(spotify_artist)
         core_spot_title = self.normalize_string(
             re.sub(r'(?i)\b(extended|original|club|mix|edit|remix|remixed|vip)\b', '', 
             re.sub(r'(?i)\b(?:feat\.?|ft\.?|featuring)\b[^()\-]*', '', 
@@ -404,7 +426,7 @@ class Downloader:
         """
         tag_artist, tag_title = self.read_embedded_tags(file_path)
 
-        norm_spot_artist = self.get_primary_artist(spotify_artist)
+        norm_spot_artist = self.normalize_all_artists(spotify_artist)
         norm_spot_title = self.normalize_string(spotify_title)
 
         # Strip mix/remix modifiers for a core title comparison
@@ -416,7 +438,7 @@ class Downloader:
         )
 
         if tag_artist and tag_title:
-            norm_tag_artist = self.normalize_string(self.get_primary_artist(tag_artist))
+            norm_tag_artist = self.normalize_all_artists(tag_artist)
             core_tag_title = self.normalize_string(
                 re.sub(mix_pattern, '', re.sub(feat_pattern, '', re.sub(paren_pattern, '', tag_title)))
             )
@@ -444,6 +466,7 @@ class Downloader:
             )
 
             # Use token_set_ratio for both: handles artist/title as substrings of longer strings
+            # norm_spot_artist already contains all artist tokens joined, token_set_ratio handles order
             artist_score = fuzz.token_set_ratio(norm_spot_artist, norm_full_path)
             title_score = fuzz.token_set_ratio(core_spot_title, norm_full_path)
 
@@ -602,9 +625,42 @@ class Downloader:
             except ID3Error:
                 tags = ID3()
                 
-            tags.add(TIT2(encoding=3, text=resolved_title))
-            tags.add(TPE1(encoding=3, text=spotify_artist))
-            tags.add(TALB(encoding=3, text=f"{resolved_title} Single"))
+            # Parse spotify_artist into primary and featured artists
+            primary_artist = spotify_artist
+            featured_artists = []
+            if spotify_artist:
+                raw_parts = re.split(r'\s*(?:,|\bfeat\.?|\bft\.?|\bfeaturing\b|\band\b|\bwith\b|&|\bx\b)\s*', spotify_artist, flags=re.IGNORECASE)
+                parts = [p.strip() for p in raw_parts if p.strip()]
+                if parts:
+                    primary_artist = parts[0]
+                    featured_artists = parts[1:]
+
+            # Append featured artists to Title tag
+            final_title = resolved_title
+            if featured_artists:
+                if len(featured_artists) == 1:
+                    feat_str = featured_artists[0]
+                else:
+                    feat_str = ", ".join(featured_artists[:-1]) + " & " + featured_artists[-1]
+                
+                # Remove any existing featuring annotations from title
+                clean_title = re.sub(r'\s*[\(\[](?:feat\.?|ft\.?|featuring)\b[^()]*[\)\]]', '', resolved_title, flags=re.IGNORECASE)
+                clean_title = re.sub(r'\s*\b(?:feat\.?|ft\.?|featuring)\b.*?(?=\s*[\(\[]|$)', '', clean_title, flags=re.IGNORECASE).strip()
+                
+                # Check if there's a mix parenthesis/suffix (e.g. "Extended Mix" or "Club Mix")
+                # and insert the (feat. ...) before it.
+                match = re.search(r'\s*([\(\[](?:extended|original|club|mix|edit|remix|remixed|vip|dub|instrumental|vocal)\b[^()]*[\)\]])$', clean_title, flags=re.IGNORECASE)
+                if match:
+                    mix_suffix = match.group(1)
+                    base_title = clean_title[:match.start()].strip()
+                    final_title = f"{base_title} (feat. {feat_str}) {mix_suffix}"
+                else:
+                    final_title = f"{clean_title} (feat. {feat_str})"
+
+            tags.add(TIT2(encoding=3, text=final_title))
+            tags.add(TPE1(encoding=3, text=primary_artist))
+            tags.add(TPE2(encoding=3, text=primary_artist))
+            tags.add(TALB(encoding=3, text=f"{final_title} Single"))
             
             # Inject the Spotify & ISRC URIs into the Comment field
             if isrc:
