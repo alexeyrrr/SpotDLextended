@@ -13,6 +13,7 @@ from rapidfuzz import fuzz
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
+from mutagen.aiff import AIFF
 from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, APIC, TSRC, COMM, error as ID3Error
 
 logger = logging.getLogger(__name__)
@@ -291,6 +292,18 @@ class Downloader:
                 title = audio.get("title", [None])[0]
                 return artist, title
 
+            elif ext in {".aif", ".aiff"}:
+                audio = AIFF(file_path)
+                if audio.tags:
+                    artist = audio.tags.get("TPE1")
+                    title = audio.tags.get("TIT2")
+                    if artist:
+                        artist = artist.text[0]
+                    if title:
+                        title = title.text[0]
+                    return artist, title
+                return None, None
+
             elif ext in {".m4a", ".aac", ".mp4"}:
                 audio = MP4(file_path)
                 artist = audio.tags.get("\xa9ART", [None])[0] if audio.tags else None
@@ -317,6 +330,12 @@ class Downloader:
             elif ext == ".flac":
                 audio = FLAC(file_path)
                 return audio.get("isrc", [None])[0]
+            elif ext in {".aif", ".aiff"}:
+                audio = AIFF(file_path)
+                if audio.tags:
+                    isrc_tag = audio.tags.get("TSRC")
+                    if isrc_tag:
+                        return isrc_tag.text[0]
         except Exception:
             pass
         return None
@@ -350,6 +369,13 @@ class Downloader:
                 if audio.info.length > 300:
                     return True
                 title = audio.get("title", [None])[0]
+            elif ext in {".aif", ".aiff"}:
+                audio = AIFF(file_path)
+                if audio.info.length > 300:
+                    return True
+                if audio.tags:
+                    tit2 = audio.tags.get("TIT2")
+                    title = tit2.text[0] if tit2 else None
             if title and any(kw in title.lower() for kw in extended_kw):
                 return True
         except Exception:
