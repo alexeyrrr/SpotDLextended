@@ -222,6 +222,70 @@ def regenerate_playlist(base_dir, playlist_folder_name):
         logging.error(f"  [❌] Error scanning directory: {e}")
 
 
+def archive_orphaned_files(playlist_folder, referenced_filenames):
+    """
+    Moves audio files in the playlist folder that are NOT referenced in the
+    current playlist into an 'Archived' subfolder.
+
+    This handles playlist rotation: when tracks are removed from a Spotify
+    playlist, the corresponding local files remain orphaned. This function
+    sweeps them into Archived/ so the playlist folder only contains current tracks.
+
+    :param playlist_folder:      Absolute path to the playlist's folder.
+    :param referenced_filenames: Iterable of filenames/paths that are part of
+                                 the current playlist.
+    """
+    AUDIO_EXTS = {".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a", ".ogg", ".aac"}
+    archived_dir = os.path.join(playlist_folder, "Archived")
+
+    active_basenames = set()
+    for ref in referenced_filenames:
+        active_basenames.add(os.path.basename(ref))
+
+    orphaned = []
+    try:
+        for entry in os.listdir(playlist_folder):
+            full_path = os.path.join(playlist_folder, entry)
+            if not os.path.isfile(full_path):
+                continue
+            ext = os.path.splitext(entry)[1].lower()
+            if ext not in AUDIO_EXTS:
+                continue
+            if entry not in active_basenames:
+                orphaned.append(entry)
+    except Exception as e:
+        logging.error(f"  [❌] Failed to scan playlist folder for orphans: {e}")
+        return
+
+    if not orphaned:
+        logging.info("  [✓] No orphaned files to archive.")
+        return
+
+    try:
+        os.makedirs(archived_dir, exist_ok=True)
+    except Exception as e:
+        logging.error(f"  [❌] Failed to create Archived directory: {e}")
+        return
+
+    moved_count = 0
+    for filename in orphaned:
+        src = os.path.join(playlist_folder, filename)
+        dst = os.path.join(archived_dir, filename)
+        if os.path.exists(dst):
+            base, ext = os.path.splitext(filename)
+            counter = 1
+            while os.path.exists(os.path.join(archived_dir, f"{base}_{counter}{ext}")):
+                counter += 1
+            dst = os.path.join(archived_dir, f"{base}_{counter}{ext}")
+        try:
+            os.rename(src, dst)
+            moved_count += 1
+        except Exception as e:
+            logging.warning(f"  [⚠] Failed to move '{filename}' to Archived/: {e}")
+
+    logging.info(f"  [🗂] Archived {moved_count}/{len(orphaned)} orphaned file(s) \u2192 {archived_dir}")
+
+
 def main():
     parser, args = parse_args()
     
@@ -365,7 +429,8 @@ def main():
         # Final Step: Create M3U8 Playlist
         if downloaded_filenames:
             create_m3u8_playlist(args.dir, playlist_name, downloaded_filenames)
-            
+            archive_orphaned_files(playlist_folder, downloaded_filenames)
+        
         # Calculate Summary
         total_tracks = len(tracks)
         skipped_count = summary_stats.get("Skipped", 0)
