@@ -17,3 +17,10 @@ readme = "readme.md"
 
 [project.scripts]
 spotdlextended = "spotdlextended.__main__:main"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
