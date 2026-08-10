@@ -914,6 +914,11 @@ class Downloader:
                         logger.debug(f"Failed to update sync history on library match: {e}")
                 return existing_track, "Library Match"
 
+        # ── Playlist-only mode: don't download, just report not found ──────
+        if playlist_only:
+            logger.info(f"  [-] Skipping download (playlist-only mode): {spotify_title}")
+            return f"{safe_base} - NOT FOUND.nfo", "Skipped"
+
         # ── Detect if track is already a mix ─────────────────────────────
         has_inherent_mix = bool(re.search(
             r'\b(extended|club mix|remix|remixed|vip)\b',
