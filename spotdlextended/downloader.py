@@ -141,8 +141,11 @@ class Downloader:
         Filters and scores results based on duration, keywords, formatting, and matches.
         """
         AUDIO_EXTS = {".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a"}
-        extended_kw = ["extended", "original mix", "club mix", "12\"", "12inch", "maxi",
-                       "extended mix", "dj mix", "lp version", "vip"]
+        extended_kw = ["extended", "original mix", "club mix", "extended mix", "dj mix", "vip"]
+        # Continuous-mix / radio-show / live-set rips. These are merely longer
+        # recordings (a full set), NOT genuine extended edits, and must not be
+        # rewarded for their extra length or labelled "Extended Mix".
+        set_rip_kw = ["radio 1 mix", "live mix", "continuous mix", "set"]
         
         is_remix_target = bool(re.search(r'\bremix\b', spotify_title, flags=re.IGNORECASE))
         core_spot_title = self.normalize_string(
@@ -221,14 +224,18 @@ class Downloader:
                 elif re.search(r'\bclean\b', filename_lower):
                     score -= 100
                 
+                is_set_rip = any(kw in filename_lower for kw in set_rip_kw)
+
                 mix_type = "Standard"
-                if get_extended:
+                if is_set_rip:
+                    # Continuous-mix / radio / live-set rip: penalize, and never
+                    # treat the extra length as evidence of an extended edit.
+                    score -= 500
+                elif get_extended and has_extended_kw:
+                    mix_type = "Extended Mix"
+                    score += 500
                     if diff >= 30:
                         score += 1000
-                        mix_type = "Extended Mix"
-                    
-                    if has_extended_kw:
-                        score += 500
                 
                 if abs(diff) <= 5:
                     score += 50
