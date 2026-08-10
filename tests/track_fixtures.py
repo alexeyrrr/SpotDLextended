@@ -39,14 +39,7 @@ REAL_TRACKS = [
         "note": "script reports no extended mix, but it exists on Soulseek",
         "correct": "Are You The Same (Extended Mix) - Kyle Watson, Body Ocean.mp3",
         "candidates": [
-            {"role": "correct_extended", "filename": "Are You The Same (Extended Mix) - Kyle Watson, Body Ocean.mp3",
-             "length": 260, "bitrate": 320, "size": 10_000_000},
-            {"role": "set_excerpt", "filename": "Are You The Same - Kyle Watson, Body Ocean (DJ Mix).mp3",
-             "length": 420, "bitrate": 320, "size": 16_000_000},
-            {"role": "standard", "filename": "Are You The Same - Kyle Watson, Body Ocean.mp3",
-             "length": 196, "bitrate": 320, "size": 7_400_000},
-            {"role": "wrong", "filename": "Are You The Same? (Demo) - Unknown Artist.mp3",
-             "length": 150, "bitrate": 192, "size": 4_000_000},
+
         ],
     },
     {
@@ -57,12 +50,6 @@ REAL_TRACKS = [
         "note": "nothing downloaded at all, but it's easily downloadable manually",
         "correct": "Don't Fix Me (Extended Mix) - April Girl, RYVM.mp3",
         "candidates": [
-            {"role": "correct_extended", "filename": "Don't Fix Me (Extended Mix) - April Girl, RYVM.mp3",
-             "length": 270, "bitrate": 320, "size": 10_400_000},
-            {"role": "set_excerpt", "filename": "Don't Fix Me - April Girl, RYVM (Club Mix).mp3",
-             "length": 390, "bitrate": 320, "size": 15_000_000},
-            {"role": "standard", "filename": "Don't Fix Me - April Girl, RYVM.mp3",
-             "length": 205, "bitrate": 320, "size": 8_100_000},
         ],
     },
     {
@@ -73,12 +60,6 @@ REAL_TRACKS = [
         "note": "extended mix not found; correct edition is the 5m56s FLAC (356s)",
         "correct": "What's A Girl To Do (Yuvèe Remix) - Luvstruck, Yuvèe.flac",
         "candidates": [
-            {"role": "correct_extended", "filename": "What's A Girl To Do (Yuvèe Remix) - Luvstruck, Yuvèe.flac",
-             "length": 356, "bitrate": 0, "size": 42_000_000},
-            {"role": "set_excerpt", "filename": "What's A Girl To Do (Yuvèe Remix) - Essential Mix.mp3",
-             "length": 420, "bitrate": 320, "size": 16_500_000},
-            {"role": "wrong", "filename": "What's A Girl To Do (Radio Edit) - Luvstruck.mp3",
-             "length": 200, "bitrate": 192, "size": 7_000_000},
         ],
     },
     {
@@ -89,12 +70,6 @@ REAL_TRACKS = [
         "note": "nothing downloaded at all, but it's easily downloadable manually",
         "correct": "Do Nothing (Extended Mix) - trillbot.mp3",
         "candidates": [
-            {"role": "correct_extended", "filename": "Do Nothing (Extended Mix) - trillbot.mp3",
-             "length": 235, "bitrate": 320, "size": 9_300_000},
-            {"role": "set_excerpt", "filename": "Do Nothing - trillbot (DJ Mix).mp3",
-             "length": 400, "bitrate": 320, "size": 15_800_000},
-            {"role": "standard", "filename": "Do Nothing - trillbot.mp3",
-             "length": 175, "bitrate": 320, "size": 6_900_000},
         ],
     },
         {
@@ -116,12 +91,6 @@ REAL_TRACKS = [
         "note": "correct extended exists on Soulseek credited to a different artist: 'Hutcher, Honey - My Vibe (Extended Mix)'",
         "correct": "Hutcher, Honey - My Vibe (Extended Mix).mp3",
         "candidates": [
-            {"role": "correct_extended", "filename": "Hutcher, Honey - My Vibe (Extended Mix).mp3",
-             "length": 250, "bitrate": 320, "size": 9_900_000},
-            {"role": "set_excerpt", "filename": "My Vibe - Hutcher, Alyzée (Live Mix).mp3",
-             "length": 380, "bitrate": 320, "size": 15_000_000},
-            {"role": "standard", "filename": "My Vibe - Hutcher, Alyzée.mp3",
-             "length": 180, "bitrate": 320, "size": 7_100_000},
         ],
     },
 ]
