@@ -50,7 +50,8 @@ def fmt_size(size):
 def role_hint(filename, track):
     """Best-effort hint for which candidate this is, for quick eyeballing."""
     base = filename.lower()
-    if track["correct"] and os.path.basename(track["correct"]).lower() == filename.lower():
+    correct = track.get("correct")
+    if correct and os.path.basename(correct).lower() == filename.lower():
         return "MATCHES-correct"
     if any(k in base for k in ("dj mix", "club mix", "radio 1 mix", "essential mix",
                                "live mix", "full set", "continuous mix", "mixed")):

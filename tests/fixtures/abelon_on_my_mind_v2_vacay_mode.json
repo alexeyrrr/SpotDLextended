@@ -1,0 +1,25 @@
+{
+  "track": {
+    "title": "on my mind v2(vacay mode)",
+    "artist": "abelon",
+    "duration_secs": 175
+  },
+  "query": "abelon on my mind v2",
+  "results": [
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 175,
+          "Filename": "NEWMUSICFRIDAY\\WK31\\New Music Friday Norway\\on my mind v2 (vacay mode) - abelon.mp3",
+          "Size": 7131917,
+          "Bitrate": 320
+        }
+      ]
+    }
+  ]
+}
