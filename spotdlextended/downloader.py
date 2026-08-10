@@ -14,15 +14,29 @@ from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
 from mutagen.aiff import AIFF
+from dataclasses import dataclass
 from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, APIC, TSRC, COMM, error as ID3Error
 
 logger = logging.getLogger(__name__)
 
-# Maximum candidates to attempt downloading per track (keeps things moving)
+# Maximum candidates to attempt downloading per query (keeps things moving)
 MAX_DOWNLOAD_ATTEMPTS = 6
+
+# Query variants tried in order; only "default" is used for now. The retry loop
+# in download_track iterates this once multi-query support is added.
+QUERY_VARIANTS = ("default",)
 
 # Loose duration tolerance (seconds) for initial pre-filtering
 DURATION_TOLERANCE_SECS = 60
+
+
+@dataclass
+class DownloadAttemptResult:
+    """Outcome of trying to download a candidate list (one query)."""
+    status: str            # "success" | "failed"
+    filepath: str | None   # final mp3 path on success
+    candidate: dict | None # the winning candidate
+    mix_type: str | None   # from the winning candidate
  
 
 class Downloader:
@@ -925,158 +939,26 @@ class Downloader:
             spotify_title, flags=re.IGNORECASE
         ))
 
-        # ── Build single broad search query ──────────────────────────────
-        # Strip parentheticals (...) and [...] from both artist and title before
-        # searching, EXCEPT for remix-containing groups — Soulseek filenames
-        # rarely include "feat.", remaster years, or radio-edit qualifiers, but
-        # they DO carry remix credits which are needed to find the right version.
-        primary_artist = self.get_primary_artist(spotify_artist)
-        clean_title = re.sub(
-            r'\s*[\(\[][^\)\]]*[\)\]]',
-            lambda m: m.group(0) if re.search(r'\bremix\b', m.group(0), re.IGNORECASE) else '',
-            spotify_title
-        ).strip()
-        clean_artist = re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', primary_artist).strip()
-        logger.info(f"  [🔍] Clean search terms — artist: '{clean_artist}', title: '{clean_title}'")
-        raw_query = f"{clean_artist} {clean_title}".replace("-", " ")
-        search_query = raw_query
-        for word in self.search_blacklist:
-            search_query = re.sub(rf'\b{re.escape(word)}\b', '', search_query, flags=re.IGNORECASE)
-        search_query = " ".join(search_query.split())
-
         temp_dir = os.path.join(folder, ".tmp_download")
-        downloaded_filepath = None
-        success_candidate = None
-        success_mix_type = None
 
-        logger.info(f"  [🔍] Query: '{search_query}'")
-
-        # ── Sockseek search ───────────────────────────────────────────────
-        try:
-            cmd = [self.sockseek_path, search_query, "--print", "json-all"]
-            if self.debug:
-                cmd.append("--debug")
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        # ── Search + download (single query for now; retry loop goes here) ──
+        result = DownloadAttemptResult("failed", None, None, None)
+        for query in QUERY_VARIANTS:
+            candidates, _ = self.find_top_candidates(
+                spotify_title, spotify_artist, spotify_secs,
+                get_extended and not has_inherent_mix,
+                query_variant=query,
             )
-            stdout, stderr = proc.communicate()
-            if proc.returncode != 0:
-                raise ValueError(f"sockseek error: {stderr.strip()}")
-            if self.debug and stderr.strip():
-                logger.debug(f"Sockseek search stderr:\n{stderr.strip()}")
-            results = json.loads(stdout.strip())
-        except Exception as e:
-            logger.error(f"  [❌] Search failed: {e}")
-            results = []
-
-        ranked_candidates = self.heuristic_filter_and_score(
-            results, spotify_title, spotify_artist, spotify_secs, get_extended and not has_inherent_mix
-        )
-
-        if not ranked_candidates:
-            logger.debug(f"  [!] No candidates passed heuristic filter for query: '{search_query}'")
-
-        attempts = [(c, c['mix_type']) for c in ranked_candidates][:MAX_DOWNLOAD_ATTEMPTS]
-        
-        for c, mix_type in attempts:
-            logger.info(
-                f"  [⬇] {c['username']} → {os.path.basename(c['filename'])} "
-                f"(Score: {c['score']}, {c['length']}s, {c['bitrate'] or '?'}kbps, {c['ext']})"
+            result = self.download_from_candidates(
+                candidates, folder, target_download_folder,
+                spotify_title, spotify_artist, spotify_uri, spotify_isrc
             )
+            if result.status == "success":
+                break
 
-            if os.path.exists(temp_dir):
-                subprocess.run(["rm", "-rf", temp_dir], check=False)
-            os.makedirs(temp_dir, exist_ok=True)
-
-            slsk_uri = f"slsk://{c['username']}/{c['filename']}"
-            try:
-                cmd = [self.sockseek_path, slsk_uri, "-o", temp_dir]
-                if self.debug:
-                    cmd.append("--debug")
-                
-                # Capture both stdout and stderr to evaluate rejection outputs
-                res = subprocess.run(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=300
-                )
-                
-                stdout_dl = res.stdout or ""
-                stderr_dl = res.stderr or ""
-                
-                # Check for blacklist-triggering rejections
-                too_many_files = "Transfer rejected: Too many files" in stdout_dl or "Transfer rejected: Too many files" in stderr_dl
-                country_blocked = "Banned (Sorry, your country is blocked)" in stdout_dl or "Banned (Sorry, your country is blocked)" in stderr_dl
-                
-                if too_many_files or country_blocked:
-                    if too_many_files:
-                        logger.warning(f"  [⚠] Blacklisted peer '{c['username']}' for this session: Too many files queue limit.")
-                    else:
-                        logger.warning(f"  [⚠] Blacklisted peer '{c['username']}' for this session: Country is blocked.")
-                    self.temp_peer_blacklist.add(c['username'])
-                    continue
-                
-                if res.returncode != 0:
-                    raise subprocess.CalledProcessError(res.returncode, cmd, output=stdout_dl, stderr=stderr_dl)
-            except Exception as e:
-                logger.warning(f"  [⚠] Download failed: {e}")
-                continue
-
-            dl_files = [
-                f for f in os.listdir(temp_dir)
-                if os.path.isfile(os.path.join(temp_dir, f))
-            ]
-            if not dl_files:
-                logger.warning("  [⚠] No file in temp dir after download.")
-                continue
-
-            dl_file = os.path.join(temp_dir, dl_files[0])
-            ext = os.path.splitext(dl_file)[1].lower()
-
-            # ── Metadata verification (primary check) ─────────────────────
-            match_ok, match_reason = self.tags_match_spotify(dl_file, spotify_title, spotify_artist)
-            if not match_ok:
-                logger.warning(f"  [✗] Metadata mismatch — {match_reason}. Skipping.")
-                continue
-            logger.info(f"  [✓] Metadata verified — {match_reason}")
-
-            # ── Determine Final Mix Title ──────────────────────────────────
-            resolved_title = self.determine_mix_title(spotify_title, os.path.basename(c['filename']))
-            final_safe_base = self.sanitize_filename(f"{resolved_title} - {spotify_artist}")
-            mp3_path = os.path.join(target_download_folder, f"{final_safe_base}.mp3")
-
-            # ── Quality check / transcode ──────────────────────────────────
-            if ext == ".mp3":
-                logger.info("  [🔬] Checking MP3 spectral quality...")
-                if not self.verify_mp3_quality(dl_file):
-                    logger.warning("  [⚠] Fake 320 kbps detected. Skipping.")
-                    os.remove(dl_file)
-                    continue
-                logger.info("  [✓] True 320 kbps confirmed.")
-                subprocess.run(["mv", dl_file, mp3_path], check=True)
-                downloaded_filepath = mp3_path
-            else:
-                logger.info(f"  [🔄] Transcoding {ext.upper()} → 320 kbps MP3...")
-                try:
-                    subprocess.run(
-                        ["ffmpeg", "-i", dl_file,
-                         "-vn",           # strip embedded cover art / video streams
-                         "-ab", "320k",
-                         "-map_metadata", "-1",
-                         "-y", mp3_path],
-                        check=True
-                    )
-                    downloaded_filepath = mp3_path
-                except Exception as e:
-                    logger.error(f"  [❌] Transcode failed: {e}")
-                    continue
-
-            success_candidate = c
-            success_mix_type = mix_type
-            break
+        downloaded_filepath = result.filepath
+        success_candidate = result.candidate
+        success_mix_type = result.mix_type
 
         # ── Cleanup ───────────────────────────────────────────────────────
         if os.path.exists(temp_dir):
@@ -1171,6 +1053,200 @@ class Downloader:
             final_return_path = downloaded_filepath
 
         return final_return_path, final_mix_type
+
+    # ─────────────────────────────────────────────
+    # Search + candidate selection
+    # ─────────────────────────────────────────────
+
+    def fetch_sockseek_results(self, query, timeout=None):
+        """
+        Run `sockseek <query> --print json-all` and return the raw results list.
+        On failure (nonzero exit / JSON parse error) returns []. timeout bounds
+        the search so live callers (tests) cannot hang the process; None keeps
+        the current unbounded behavior.
+        """
+        try:
+            cmd = [self.sockseek_path, query, "--print", "json-all"]
+            if self.debug:
+                cmd.append("--debug")
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            if timeout is not None:
+                stdout, stderr = proc.communicate(timeout=timeout)
+            else:
+                stdout, stderr = proc.communicate()
+            if proc.returncode != 0:
+                raise ValueError(f"sockseek error: {stderr.strip()}")
+            if self.debug and stderr.strip():
+                logger.debug(f"Sockseek search stderr:\n{stderr.strip()}")
+            return json.loads(stdout.strip())
+        except Exception as e:
+            logger.error(f"  [❌] Search failed: {e}")
+            return []
+
+    def find_top_candidates(self, spotify_title, spotify_artist, spotify_duration_secs,
+                            get_extended, query_variant=None, timeout=None):
+        """
+        Build a query, fetch sockseek results, and score them via
+        heuristic_filter_and_score.
+
+        Returns (ranked_candidates, query_used). query_variant exists so the
+        orchestrator can later retry with different query strings; for now it is
+        ignored (single default query). On search failure returns ([], query_used).
+        timeout is passed through to fetch_sockseek_results.
+        """
+        # Strip parentheticals (...) and [...] from both artist and title before
+        # searching, EXCEPT for remix-containing groups — Soulseek filenames
+        # rarely include "feat.", remaster years, or radio-edit qualifiers, but
+        # they DO carry remix credits which are needed to find the right version.
+        primary_artist = self.get_primary_artist(spotify_artist)
+        clean_title = re.sub(
+            r'\s*[\(\[][^\)\]]*[\)\]]',
+            lambda m: m.group(0) if re.search(r'\bremix\b', m.group(0), re.IGNORECASE) else '',
+            spotify_title
+        ).strip()
+        clean_artist = re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', primary_artist).strip()
+        logger.info(f"  [🔍] Clean search terms — artist: '{clean_artist}', title: '{clean_title}'")
+        raw_query = f"{clean_artist} {clean_title}".replace("-", " ")
+        search_query = raw_query
+        for word in self.search_blacklist:
+            search_query = re.sub(rf'\b{re.escape(word)}\b', '', search_query, flags=re.IGNORECASE)
+        search_query = " ".join(search_query.split())
+
+        logger.info(f"  [🔍] Query: '{search_query}'")
+
+        results = self.fetch_sockseek_results(search_query, timeout=timeout)
+
+        ranked_candidates = self.heuristic_filter_and_score(
+            results, spotify_title, spotify_artist, spotify_duration_secs, get_extended
+        )
+
+        if not ranked_candidates:
+            logger.debug(f"  [!] No candidates passed heuristic filter for query: '{search_query}'")
+
+        return ranked_candidates, search_query
+
+    def download_from_candidates(self, candidates, folder, target_download_folder,
+                                 spotify_title, spotify_artist, spotify_uri,
+                                 spotify_isrc) -> DownloadAttemptResult:
+        """
+        Try each candidate in order; return the first that passes all checks:
+        download, peer blacklist, metadata match, spectral 320 check, transcode.
+
+        Applies the MAX_DOWNLOAD_ATTEMPTS cap per call (per query). Never raises
+        on per-candidate failure — records and moves to the next.
+        """
+        temp_dir = os.path.join(folder, ".tmp_download")
+        downloaded_filepath = None
+        success_candidate = None
+        success_mix_type = None
+
+        attempts = [(c, c['mix_type']) for c in candidates][:MAX_DOWNLOAD_ATTEMPTS]
+
+        for c, mix_type in attempts:
+            logger.info(
+                f"  [⬇] {c['username']} → {os.path.basename(c['filename'])} "
+                f"(Score: {c['score']}, {c['length']}s, {c['bitrate'] or '?'}kbps, {c['ext']})"
+            )
+
+            if os.path.exists(temp_dir):
+                subprocess.run(["rm", "-rf", temp_dir], check=False)
+            os.makedirs(temp_dir, exist_ok=True)
+
+            slsk_uri = f"slsk://{c['username']}/{c['filename']}"
+            try:
+                cmd = [self.sockseek_path, slsk_uri, "-o", temp_dir]
+                if self.debug:
+                    cmd.append("--debug")
+
+                # Capture both stdout and stderr to evaluate rejection outputs
+                res = subprocess.run(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=300
+                )
+
+                stdout_dl = res.stdout or ""
+                stderr_dl = res.stderr or ""
+
+                # Check for blacklist-triggering rejections
+                too_many_files = "Transfer rejected: Too many files" in stdout_dl or "Transfer rejected: Too many files" in stderr_dl
+                country_blocked = "Banned (Sorry, your country is blocked)" in stdout_dl or "Banned (Sorry, your country is blocked)" in stderr_dl
+
+                if too_many_files or country_blocked:
+                    if too_many_files:
+                        logger.warning(f"  [⚠] Blacklisted peer '{c['username']}' for this session: Too many files queue limit.")
+                    else:
+                        logger.warning(f"  [⚠] Blacklisted peer '{c['username']}' for this session: Country is blocked.")
+                    self.temp_peer_blacklist.add(c['username'])
+                    continue
+
+                if res.returncode != 0:
+                    raise subprocess.CalledProcessError(res.returncode, cmd, output=stdout_dl, stderr=stderr_dl)
+            except Exception as e:
+                logger.warning(f"  [⚠] Download failed: {e}")
+                continue
+
+            dl_files = [
+                f for f in os.listdir(temp_dir)
+                if os.path.isfile(os.path.join(temp_dir, f))
+            ]
+            if not dl_files:
+                logger.warning("  [⚠] No file in temp dir after download.")
+                continue
+
+            dl_file = os.path.join(temp_dir, dl_files[0])
+            ext = os.path.splitext(dl_file)[1].lower()
+
+            # ── Metadata verification (primary check) ─────────────────────
+            match_ok, match_reason = self.tags_match_spotify(dl_file, spotify_title, spotify_artist)
+            if not match_ok:
+                logger.warning(f"  [✗] Metadata mismatch — {match_reason}. Skipping.")
+                continue
+            logger.info(f"  [✓] Metadata verified — {match_reason}")
+
+            # ── Determine Final Mix Title ──────────────────────────────────
+            resolved_title = self.determine_mix_title(spotify_title, os.path.basename(c['filename']))
+            final_safe_base = self.sanitize_filename(f"{resolved_title} - {spotify_artist}")
+            mp3_path = os.path.join(target_download_folder, f"{final_safe_base}.mp3")
+
+            # ── Quality check / transcode ──────────────────────────────────
+            if ext == ".mp3":
+                logger.info("  [🔬] Checking MP3 spectral quality...")
+                if not self.verify_mp3_quality(dl_file):
+                    logger.warning("  [⚠] Fake 320 kbps detected. Skipping.")
+                    os.remove(dl_file)
+                    continue
+                logger.info("  [✓] True 320 kbps confirmed.")
+                subprocess.run(["mv", dl_file, mp3_path], check=True)
+                downloaded_filepath = mp3_path
+            else:
+                logger.info(f"  [🔄] Transcoding {ext.upper()} → 320 kbps MP3...")
+                try:
+                    subprocess.run(
+                        ["ffmpeg", "-i", dl_file,
+                         "-vn",           # strip embedded cover art / video streams
+                         "-ab", "320k",
+                         "-map_metadata", "-1",
+                         "-y", mp3_path],
+                        check=True
+                    )
+                    downloaded_filepath = mp3_path
+                except Exception as e:
+                    logger.error(f"  [❌] Transcode failed: {e}")
+                    continue
+
+            success_candidate = c
+            success_mix_type = mix_type
+            break
+
+        if downloaded_filepath:
+            return DownloadAttemptResult("success", downloaded_filepath, success_candidate, success_mix_type)
+        return DownloadAttemptResult("failed", None, None, None)
 
     # ─────────────────────────────────────────────
     # Utilities

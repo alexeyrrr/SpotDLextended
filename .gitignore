@@ -26,6 +26,9 @@
 !spotdlextended/**
 !bin/
 !bin/sockseek.exe
+# tests/ matches the "downloads" rule above; re-include it so the whitelisted .py files are seen
+!tests/
+!tests/**
 
 # 5. FINAL SAFETY IGNORES (These must be at the bottom to stay ignored)
 .venv/

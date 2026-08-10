@@ -32,6 +32,12 @@ Tracks can end up duplicated across playlist folders because:
 
 After `git pull`, run `pip install -e .` to pick up library search improvements.
 
+## Tests (known failing — intentional)
+- Run with `pip install -e ".[dev]"` then `python -m pytest`
+- `tests/` contains scorer + download-flow decision tests seeded with real tracks (`tests/track_fixtures.py`) the engine got wrong:
+  - `heuristic_filter_and_score` labels any candidate ≥30s longer than the spotify duration as "Extended Mix" (+1000) and treats `dj mix`/`club mix` as extended keywords (+500) — so DJ-set excerpts outrank genuine extended mixes
+  - The suite is **expected to fail** until the scorer is fixed (see `tests/test_scorer.py`, `tests/test_download_flow.py`)
+
 ## Important details
 - `settings.json` is gitignored — don't commit it
 - Sync history: `.sync_history.json` in each playlist folder tracks previous downloads; standard mixes get a 14-day cooldown before retry
