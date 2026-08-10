@@ -1,0 +1,557 @@
+{
+  "track": {
+    "title": "Are You The Same",
+    "artist": "Kyle Watson, Body Ocean",
+    "duration_secs": 161
+  },
+  "query": "kyle watson Are You The Same",
+  "results": [
+    {
+      "User": {
+        "Username": "jebanitos",
+        "UploadSpeed": 4.56301,
+        "HasFreeUploadSlot": true
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "X\\Best New Hype Dance _ Pop_ July 2026\\01. Kyle Watson & Body Ocean - Are You The Same (Extended Mix).flac",
+          "Size": 38743915,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "artyfish",
+        "UploadSpeed": 0.5349903,
+        "HasFreeUploadSlot": true
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "@@bglft\\Desktop\\july 2026\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix) [djdownloadme.com].wav",
+          "Size": 55603744,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        },
+        {
+          "Length": 314,
+          "Filename": "@@bglft\\Desktop\\july 2026\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix).mp3",
+          "Size": 12696062,
+          "Bitrate": 320
+        },
+        {
+          "Filename": "@@bglft\\Desktop\\july 2026\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix) [djdownloadme.com].mxm",
+          "Size": 71640
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "The.BlackPearl",
+        "UploadSpeed": 5.282934,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 230,
+          "Filename": "Qobuz High-Res Music\\Kyle Watson & Body Ocean\\Are You The Same (2026) {QZ-kkqbi25khjl6p}\\01 Are You The Same.flac",
+          "Size": 29203320,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        },
+        {
+          "Filename": "Qobuz High-Res Music\\Kyle Watson & Body Ocean\\Are You The Same (2026) {QZ-kkqbi25khjl6p}\\Cover.jpg",
+          "Size": 1310888
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "forgottenfrequencies",
+        "UploadSpeed": 1.2724533,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "shared\\QOBUZ_MONITOR\\Best New Hype Dance _ Pop_ July 2026\\01. Kyle Watson & Body Ocean - Are You The Same (Extended Mix).flac",
+          "Size": 38743915,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "AUDIO1\\2026\\07-JUL\\10\\Zip DJ 1007 [DJC]\\Dance\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix).mp3",
+          "Size": 12777225,
+          "Bitrate": 320
+        },
+        {
+          "Length": 230,
+          "Filename": "AUDIO1\\2026\\07-JUL\\10\\Zip DJ 1007 [DJC]\\Dance\\Kyle Watson, Body Ocean - Are You The Same (Original Mix).mp3",
+          "Size": 9386603,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 241,
+          "Filename": "AUDIO1\\2026\\07-JUL\\17\\Crate Connect 1707\\Kyle Watson, Body Ocean - Are You The Same (Acap-In) Radio).mp3",
+          "Size": 9837480,
+          "Bitrate": 320
+        },
+        {
+          "Length": 314,
+          "Filename": "AUDIO1\\2026\\07-JUL\\17\\Crate Connect 1707\\Kyle Watson, Body Ocean - Are You The Same (Extended).mp3",
+          "Size": 12773631,
+          "Bitrate": 320
+        },
+        {
+          "Length": 255,
+          "Filename": "AUDIO1\\2026\\07-JUL\\17\\Crate Connect 1707\\Kyle Watson, Body Ocean - Are You The Same (Intro) Radio).mp3",
+          "Size": 10380822,
+          "Bitrate": 320
+        },
+        {
+          "Length": 135,
+          "Filename": "AUDIO1\\2026\\07-JUL\\17\\Crate Connect 1707\\Kyle Watson, Body Ocean - Are You The Same (Quick Hit) Radio).mp3",
+          "Size": 5579409,
+          "Bitrate": 320
+        },
+        {
+          "Length": 230,
+          "Filename": "AUDIO1\\2026\\07-JUL\\17\\Crate Connect 1707\\Kyle Watson, Body Ocean - Are You The Same (Radio).mp3",
+          "Size": 9382816,
+          "Bitrate": 320
+        },
+        {
+          "Length": 258,
+          "Filename": "AUDIO1\\2026\\07-JUL\\17\\Crate Connect 1707\\Kyle Watson, Body Ocean - Are You The Same (Transition 110-128) Radio).mp3",
+          "Size": 10526017,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 258,
+          "Filename": "AUDIO1\\2026\\07-JUL\\17\\Transitions 1707\\Kyle Watson, Body Ocean - Are You The Same (Transition 110-128) Radio).mp3",
+          "Size": 10350006,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 135,
+          "Filename": "AUDIO1\\2026\\07-JUL\\20\\Da Zone 2007\\Kyle Watson, Body Ocean - Are You The Same (That Mexican DJ Quick Hit) (Clean) 6A 128.mp3",
+          "Size": 5673304,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 135,
+          "Filename": "AUDIO1\\2026\\08-AUG\\01.1\\All In One Partybreaks and Remixes [July 2026] [DJC]\\Kyle Watson, Body Ocean - Are You The Same (That Mexican DJ Quick Hit) (Clean) 6A 128.mp3",
+          "Size": 5404507,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 230,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\14\\8th Wonder 14 JUL\\Kyle Watson & Body Ocean - Are You The Same (Clean).mp3",
+          "Size": 9392373,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 135,
+          "Filename": "AUDIO1\\2026\\08-AUG\\01.1\\That Mexican DJ Remix Pack [July2026]\\Kyle Watson, Body Ocean - Are You The Same (That Mexican DJ Quick Hit) (Clean) 6A 128.mp3",
+          "Size": 5404507,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "AUDIO1\\2026\\07-JUL\\11\\Late Night Record Pool 1107 [DJC]\\Kyle Watson and Body Ocean - Are You The Same (Extended).mp3",
+          "Size": 12595337,
+          "Bitrate": 320
+        },
+        {
+          "Length": 230,
+          "Filename": "AUDIO1\\2026\\07-JUL\\11\\Late Night Record Pool 1107 [DJC]\\Kyle Watson and Body Ocean - Are You The Same (Original Mix).mp3",
+          "Size": 9205727,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ's Private Club",
+        "UploadSpeed": 0.0018987656,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "MUSIC\\TRAXSOURCE PROMOS\\2026\\7-2026\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix) [No Context Records].mp3",
+          "Size": 13094460,
+          "Bitrate": 320
+        },
+        {
+          "Length": 314,
+          "Filename": "MUSIC\\TRAXSOURCE PROMOS\\2026\\7-2026\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix) [No Context Records].aiff",
+          "Size": 56025422,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "EXLCUSIVE BEATPORT AND TRAXSOURCE\\2026\\7-2026\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix) [No Context Records].mp3",
+          "Size": 13094460,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\AUG\\01\\Beatport Best New Hype  01 AUG\\Beatport Best New Hype Dance Pop [July 2026]\\Kyle Watson, Body Ocean - Are You The Same  Extended Mix.mp3",
+          "Size": 12766546,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 241,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\17\\Crate Connect 17 JUL\\Kyle Watson, Body Ocean - Are You The Same (Acap-In) Radio).mp3",
+          "Size": 9837644,
+          "Bitrate": 320
+        },
+        {
+          "Length": 314,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\17\\Crate Connect 17 JUL\\Kyle Watson, Body Ocean - Are You The Same (Extended).mp3",
+          "Size": 12773795,
+          "Bitrate": 320
+        },
+        {
+          "Length": 255,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\17\\Crate Connect 17 JUL\\Kyle Watson, Body Ocean - Are You The Same (Intro) Radio).mp3",
+          "Size": 10380986,
+          "Bitrate": 320
+        },
+        {
+          "Length": 135,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\17\\Crate Connect 17 JUL\\Kyle Watson, Body Ocean - Are You The Same (Quick Hit) Radio).mp3",
+          "Size": 5579573,
+          "Bitrate": 320
+        },
+        {
+          "Length": 230,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\17\\Crate Connect 17 JUL\\Kyle Watson, Body Ocean - Are You The Same (Radio).mp3",
+          "Size": 9382980,
+          "Bitrate": 320
+        },
+        {
+          "Length": 258,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\17\\Crate Connect 17 JUL\\Kyle Watson, Body Ocean - Are You The Same (Transition 110-128) Radio).mp3",
+          "Size": 10526181,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "GENEMIGE\\GeneMige Music Pack 050 of 2026\\Beatport Best New Hype Dance Pop July 2026\\Kyle Watson, Body Ocean - Are You The Same  Extended Mix.mp3",
+          "Size": 12599622,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "AUDIO1\\2026\\08-AUG\\01\\Beatport Best New Hype 0108\\Beatport Best New Hype Dance Pop [July 2026]\\Kyle Watson, Body Ocean - Are You The Same  Extended Mix.mp3",
+          "Size": 12599622,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ's Private Club",
+        "UploadSpeed": 0.0018987656,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 135,
+          "Filename": "MUSIC\\0day Releases\\2026\\7-2026\\29-7-2026 (Dj Pool Edition)\\Da Zone Update\\Kyle Watson, Body Ocean - Are You The Same (That Mexican Dj Quick Hit) (Clean) 128 128.mp3",
+          "Size": 5462285,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 230,
+          "Filename": "AUDIO1\\2026\\07-JUL\\14\\8th Wonder 1407\\Kyle Watson & Body Ocean - Are You The Same (Clean).mp3",
+          "Size": 9221426,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "BEATPORT 2026\\COLLECTIONS\\WEEKEND PICKS\\Weekend Picks 2026 Week 28\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix).mp3",
+          "Size": 12671320,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "AUDIO1\\2026\\07-JUL\\13\\FRP 1307\\Dance\\Kyle Watson & Body Ocean - Are You The Same (Extended Mix).mp3",
+          "Size": 12618963,
+          "Bitrate": 320
+        },
+        {
+          "Length": 230,
+          "Filename": "AUDIO1\\2026\\07-JUL\\13\\FRP 1307\\Dance\\Kyle Watson & Body Ocean - Are You The Same (Radio Edit).mp3",
+          "Size": 9228269,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\13\\FRP 13 JUL\\Dance\\Kyle Watson & Body Ocean - Are You The Same (Extended Mix).mp3",
+          "Size": 12769722,
+          "Bitrate": 320
+        },
+        {
+          "Length": 230,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\13\\FRP 13 JUL\\Dance\\Kyle Watson & Body Ocean - Are You The Same (Radio Edit).mp3",
+          "Size": 9379026,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 135,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\20\\Da Zone 20 JUL\\Kyle Watson, Body Ocean - Are You The Same (That Mexican DJ Quick Hit) (Clean) 6A 128.mp3",
+          "Size": 5574212,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 230,
+          "Filename": "NEWMUSICFRIDAY\\WK28\\New Music Friday South Africa\\Are You The Same - Kyle Watson, Body Ocean.mp3",
+          "Size": 9329859,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 258,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\17\\Transitions 17 JUL\\Kyle Watson, Body Ocean - Are You The Same (Transition 110-128) Radio).mp3",
+          "Size": 10519663,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "miredswamp",
+        "UploadSpeed": 2.0715084,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "EDM Klepto Blitz\\IMMERSION\\10.07.2026\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix) [djdownloadme.com].wav",
+          "Size": 55603744,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "AUDIO1\\2026\\07-JUL\\18\\EDM Lossless 1807\\Unsorted\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix).wav",
+          "Size": 56024298,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 314,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUL\\18\\EDM Lossless 18 JUL\\Unsorted\\Kyle Watson, Body Ocean - Are You The Same (Extended Mix).wav",
+          "Size": 56024346,
+          "SampleRate": 44100,
+          "BitDepth": 16
+        }
+      ]
+    }
+  ]
+}

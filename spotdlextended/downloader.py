@@ -1086,21 +1086,12 @@ class Downloader:
             logger.error(f"  [❌] Search failed: {e}")
             return []
 
-    def find_top_candidates(self, spotify_title, spotify_artist, spotify_duration_secs,
-                            get_extended, query_variant=None, timeout=None):
+    def build_search_query(self, spotify_title, spotify_artist):
         """
-        Build a query, fetch sockseek results, and score them via
-        heuristic_filter_and_score.
-
-        Returns (ranked_candidates, query_used). query_variant exists so the
-        orchestrator can later retry with different query strings; for now it is
-        ignored (single default query). On search failure returns ([], query_used).
-        timeout is passed through to fetch_sockseek_results.
+        Build the single broad search query string used for a track.
+        Strips parentheticals (...) and [...] from artist and title except
+        remix-containing groups, then removes blacklist words.
         """
-        # Strip parentheticals (...) and [...] from both artist and title before
-        # searching, EXCEPT for remix-containing groups — Soulseek filenames
-        # rarely include "feat.", remaster years, or radio-edit qualifiers, but
-        # they DO carry remix credits which are needed to find the right version.
         primary_artist = self.get_primary_artist(spotify_artist)
         clean_title = re.sub(
             r'\s*[\(\[][^\)\]]*[\)\]]',
@@ -1113,8 +1104,20 @@ class Downloader:
         search_query = raw_query
         for word in self.search_blacklist:
             search_query = re.sub(rf'\b{re.escape(word)}\b', '', search_query, flags=re.IGNORECASE)
-        search_query = " ".join(search_query.split())
+        return " ".join(search_query.split())
 
+    def find_top_candidates(self, spotify_title, spotify_artist, spotify_duration_secs,
+                            get_extended, query_variant=None, timeout=None):
+        """
+        Build a query, fetch sockseek results, and score them via
+        heuristic_filter_and_score.
+
+        Returns (ranked_candidates, query_used). query_variant exists so the
+        orchestrator can later retry with different query strings; for now it is
+        ignored (single default query). On search failure returns ([], query_used).
+        timeout is passed through to fetch_sockseek_results.
+        """
+        search_query = self.build_search_query(spotify_title, spotify_artist)
         logger.info(f"  [🔍] Query: '{search_query}'")
 
         results = self.fetch_sockseek_results(search_query, timeout=timeout)
