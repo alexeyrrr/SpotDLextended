@@ -19,25 +19,45 @@ query when a download fails) can be added later, **but do not implement that loo
 
 ## Deliverables
 
-### 1. Extract `search_and_filter(...)`
+### 1. Extract `fetch_sockseek_results(...)` + `find_top_candidates(...)`
 Extract the query construction (lines ~928-952) + the sockseek search execution
 (lines ~954-975) + the `heuristic_filter_and_score` call (lines ~973-975) out of
-`download_track`.
+`download_track`. Split the search I/O into its own smallest unit so tests can
+inspect raw results independently of ranking.
 
 ```python
-def search_and_filter(self, spotify_title, spotify_artist, spotify_duration_secs,
-                      get_extended, query_variant=None):
-    """Build a query, run `sockseek <query> --print json-all`, score the results.
+def fetch_sockseek_results(self, query, timeout=None):
+    """Run `sockseek <query> --print json-all`; return the raw results list.
+    On failure (nonzero exit / JSON parse error) returns []. timeout bounds the
+    search so live callers (tests) cannot hang the process; None = current
+    unbounded behavior."""
+```
+
+```python
+def find_top_candidates(self, spotify_title, spotify_artist, spotify_duration_secs,
+                        get_extended, query_variant=None, timeout=None):
+    """Build a query, fetch sockseek results, score via heuristic_filter_and_score.
 
     Returns (ranked_candidates, query_used). query_variant exists so the
     orchestrator can later retry with different query strings; for now it is
-    ignored (single default query). On search failure returns ([], query_used)."""
+    ignored (single default query). On search failure returns ([], query_used).
+    timeout is passed through to fetch_sockseek_results."""
 ```
 
 - Preserve today's behavior exactly: debug flag passthrough, `json.loads` error
   handling → empty list, blacklist-word stripping.
 - `query_variant` is required to exist in the signature but must NOT trigger any
   multi-query behavior.
+- `fetch_sockseek_results` must pass `timeout` to `proc.communicate(timeout=...)`.
+
+### Live-test seam
+`fetch_sockseek_results` and `find_top_candidates` are the intended targets for
+live tests: tests call them with a real track's title/artist/duration, no download
+is involved, and assertions are made on real Soulseek results. Keep them as
+standalone callable methods; do not inline their bodies into `download_track`.
+`fetch_sockseek_results` gives tests access to the raw results so they can verify
+filtering decisions (what `heuristic_filter_and_score` kept vs. dropped), while
+`find_top_candidates` verifies the final ranking.
 
 ### 2. Extract `download_from_candidates(...)`
 Extract the candidate-attempt loop (lines ~980-1079): download via `slsk://` URI,
@@ -76,7 +96,7 @@ KEEP unchanged in the orchestrator:
 - Tagging + success sync-history (~1143-1167)
 
 REPLACE the inline search+download body with a single sequential path:
-1. `candidates, query_used = self.search_and_filter(...)`
+1. `candidates, query_used = self.find_top_candidates(...)`
 2. `result = self.download_from_candidates(candidates, ...)`
 3. Existing fallback/finalize logic driven by `result.status`.
 
@@ -92,10 +112,11 @@ noting where the retry loop will go. Correctness beats elegance here.
 - No behavioral change to `download_track`'s return values (`(filename, mix_type)` /
   skip / error paths) beyond refactoring-induced equivalence.
 - No changes to settings, cli, __main__, xml_exporter, or spotify_scraper.
-- No test rework — tests stay exactly as they are.
+- No test rework in this refactor — live-test strategy is a separate follow-up
+  that will target `fetch_sockseek_results` / `find_top_candidates`.
 
 
 ## Definition of done
-1. `download_track` / `search_and_filter` / `download_from_candidates` exist with clear,
-   single responsibilities.
+1. `download_track` / `find_top_candidates` / `fetch_sockseek_results` /
+   `download_from_candidates` exist with clear, single responsibilities.
 2. Download outcomes for the single-query path are unchanged from before the refactor.
