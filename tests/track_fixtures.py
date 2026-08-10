@@ -34,7 +34,7 @@ REAL_TRACKS = [
     {
         "title": "Are You The Same",
         "artist": "Kyle Watson, Body Ocean",
-        "duration_secs": 196,  # TODO confirm real spotify duration
+        "duration_secs": 161,  # TODO confirm real spotify duration
         "remix_target": False,
         "note": "script reports no extended mix, but it exists on Soulseek",
         "correct": "Are You The Same (Extended Mix) - Kyle Watson, Body Ocean.mp3",
@@ -52,7 +52,7 @@ REAL_TRACKS = [
     {
         "title": "Don't Fix Me",
         "artist": "April Girl, RYVM",
-        "duration_secs": 205,  # TODO confirm
+        "duration_secs": 154, 
         "remix_target": False,
         "note": "nothing downloaded at all, but it's easily downloadable manually",
         "correct": "Don't Fix Me (Extended Mix) - April Girl, RYVM.mp3",
@@ -68,7 +68,7 @@ REAL_TRACKS = [
     {
         "title": "What's A Girl To Do (Yuvèe Remix)",
         "artist": "Luvstruck, Yuvèe",
-        "duration_secs": 200,  # TODO confirm
+        "duration_secs": 174, 
         "remix_target": True,
         "note": "extended mix not found; correct edition is the 5m56s FLAC (356s)",
         "correct": "What's A Girl To Do (Yuvèe Remix) - Luvstruck, Yuvèe.flac",
@@ -84,7 +84,7 @@ REAL_TRACKS = [
     {
         "title": "Do Nothing",
         "artist": "trillbot",
-        "duration_secs": 175,  # TODO confirm
+        "duration_secs": 147,  
         "remix_target": False,
         "note": "nothing downloaded at all, but it's easily downloadable manually",
         "correct": "Do Nothing (Extended Mix) - trillbot.mp3",
@@ -100,7 +100,7 @@ REAL_TRACKS = [
     {
         "title": "My Vibe",
         "artist": "Hutcher, Alyzée",
-        "duration_secs": 180,  # TODO confirm
+        "duration_secs": 161,  
         "remix_target": False,
         "note": "correct extended exists on Soulseek credited to a different artist: 'Hutcher, Honey - My Vibe (Extended Mix)'",
         "correct": "Hutcher, Honey - My Vibe (Extended Mix).mp3",
