@@ -1,0 +1,165 @@
+{
+  "track": {
+    "title": "Don't Fix Me",
+    "artist": "April Girl, RYVM",
+    "duration_secs": 154
+  },
+  "query": "april girl Don't Fix Me",
+  "results": [
+    {
+      "User": {
+        "Username": "jackstr",
+        "UploadSpeed": 10.826767,
+        "HasFreeUploadSlot": true
+      },
+      "Files": [
+        {
+          "Length": 154,
+          "Filename": "music\\April Girl\\Intro\\01 - Don't Fix Me.flac",
+          "Size": 31381350,
+          "SampleRate": 44100,
+          "BitDepth": 24
+        },
+        {
+          "Filename": "music\\April Girl\\Intro\\01 - Don't Fix Me.lrc",
+          "Size": 852
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "peterherronbrown",
+        "UploadSpeed": 0.6168909,
+        "HasFreeUploadSlot": true
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "@@bboau\\Selected. (GER)\\SLCTD 0405 - April Girl ''Intro''\\April Girl (Intro)-[01]-Don't Fix Me.mp3",
+          "Size": 6797653,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\AUG\\06\\FRP 06 AUG\\Deep House\\April Girl ft RYVM - Don t Fix Me (Original Mix).mp3",
+          "Size": 6390849,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "AUDIO1\\2026\\06-JUN\\03\\The Mash Up 0306\\RyVM, April Girl - Don't Fix Me (Orig. Mix) (Clean) 2A 126.mp3",
+          "Size": 6214093,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "AUDIO1\\2026\\08-AUG\\06\\8th Wonder 0608\\April Girl Feat.. RYVM - Don t Fix Me (Original Mix).mp3",
+          "Size": 6217012,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\AUG\\06\\8th Wonder 06 AUG\\April Girl Feat.. RYVM - Don t Fix Me (Original Mix).mp3",
+          "Size": 6387934,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "AUDIO1\\2026\\07-JUL\\15\\Zip DJ 1507 [DJC]\\Deep House\\April Girl, RYVM - Don't Fix Me (Original Mix).mp3",
+          "Size": 6205692,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "AUDIO1\\2026\\08-AUG\\06\\FRP 0608\\Deep House\\April Girl ft RYVM - Don t Fix Me (Original Mix).mp3",
+          "Size": 6232713,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "BEATPORT 2026\\MONTHS\\MRT\\03\\Deep House 03 MAR\\April Girl - Don't Fix Me feat RYVM (Original Mix) [Selected].mp3",
+          "Size": 6396371,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 155,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\JUN\\03\\The Mash Up  03 JUN\\RyVM, April Girl - Don't Fix Me (Orig. Mix) (Clean) 2A 126.mp3",
+          "Size": 6374797,
+          "Bitrate": 320
+        }
+      ]
+    }
+  ]
+}

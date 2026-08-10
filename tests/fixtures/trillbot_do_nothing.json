@@ -1,0 +1,40 @@
+{
+  "track": {
+    "title": "Do Nothing",
+    "artist": "trillbot",
+    "duration_secs": 147
+  },
+  "query": "trillbot Do Nothing",
+  "results": [
+    {
+      "User": {
+        "Username": "musicmasterrdjpool",
+        "UploadSpeed": 0.010169983,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 191,
+          "Filename": "DJPOOLS\\2026\\MONTHS\\AUG\\03\\Beatport Best New  03 AUG\\Beatport Best New UK Garage Bassline [July 2026]\\trillbot - Do Nothing (Extended Mix).mp3",
+          "Size": 7812602,
+          "Bitrate": 320
+        }
+      ]
+    },
+    {
+      "User": {
+        "Username": "DJ-Promo",
+        "UploadSpeed": 0.019426346,
+        "HasFreeUploadSlot": false
+      },
+      "Files": [
+        {
+          "Length": 191,
+          "Filename": "AUDIO1\\2026\\08-AUG\\03\\Beatport Best New 0308\\Beatport Best New UK Garage Bassline [July 2026]\\trillbot - Do Nothing (Extended Mix).mp3",
+          "Size": 7645784,
+          "Bitrate": 320
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "track": {
+    "title": "1st Thing",
+    "artist": "Tonii Boii, Bigga Rankin",
+    "duration_secs": 147
+  },
+  "query": "tonii boii 1st Thing",
+  "results": [
+    {
+      "User": {
+        "Username": "captainwunderful",
+        "UploadSpeed": 0.824934,
+        "HasFreeUploadSlot": true
+      },
+      "Files": [
+        {
+          "Length": 174,
+          "Filename": "@@qxkda\\music to be processed\\library\\hip hop\\mixtapes\\dj mlk\\slappers vol. 05\\05-Tonii_Boii_Feat_Bigga_Rankin-1st_Thing.mp3",
+          "Size": 4239790,
+          "Bitrate": 192
+        }
+      ]
+    }
+  ]
+}
