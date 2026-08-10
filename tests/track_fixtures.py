@@ -97,6 +97,17 @@ REAL_TRACKS = [
              "length": 175, "bitrate": 320, "size": 6_900_000},
         ],
     },
+        {
+        "title": "1st Thing",
+        "artist": "Tonii Boii, Bigga Rankin",
+        "duration_secs": 147,  
+        "remix_target": False,
+        "note": "nothing downloaded at all, but it's easily downloadable manually",
+        "correct": "Do Nothing (Extended Mix) - trillbot.mp3",
+        "candidates": [
+
+        ],
+    },    
     {
         "title": "My Vibe",
         "artist": "Hutcher, Alyzée",
