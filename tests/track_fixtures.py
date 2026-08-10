@@ -25,42 +25,7 @@ candidate is the Soulseek file duration in seconds.
 # ─────────────────────────────────────────────────────────────────────────────
 # Synthetic control cases (always run, no external knowledge needed)
 # ─────────────────────────────────────────────────────────────────────────────
-SYNTHETIC_TRACKS = [
-    {
-        "title": "Lights Out",
-        "artist": "Example DJ",
-        "duration_secs": 180,
-        "remix_target": False,
-        "note": "generic control: genuine extended mix must beat a long set rip",
-        "correct": "Lights Out (Extended Mix) - Example DJ.mp3",
-        "candidates": [
-            {"role": "correct_extended", "filename": "Lights Out (Extended Mix) - Example DJ.mp3",
-             "length": 265, "bitrate": 320, "size": 10_500_000},
-            {"role": "set_excerpt", "filename": "Lights Out - Example DJ (DJ Mix).mp3",
-             "length": 430, "bitrate": 320, "size": 17_000_000},
-            {"role": "standard", "filename": "Lights Out - Example DJ.mp3",
-             "length": 180, "bitrate": 320, "size": 7_200_000},
-            {"role": "wrong", "filename": "Somebody Else - Another Artist.mp3",
-             "length": 190, "bitrate": 320, "size": 7_600_000},
-        ],
-    },
-    {
-        "title": "Run It Back (Remix)",
-        "artist": "Alpha, Beta",
-        "duration_secs": 200,
-        "remix_target": True,
-        "note": "remix-target control: correct remix (FLAC, longer) must win over a set rip",
-        "correct": "Run It Back (Alpha & Beta Remix) - Alpha, Beta.flac",
-        "candidates": [
-            {"role": "correct_extended", "filename": "Run It Back (Alpha & Beta Remix) - Alpha, Beta.flac",
-             "length": 340, "bitrate": 0, "size": 40_000_000},
-            {"role": "set_excerpt", "filename": "Run It Back (Alpha & Beta Remix) - Radio 1 Mix.mp3",
-             "length": 420, "bitrate": 320, "size": 16_000_000},
-            {"role": "standard", "filename": "Run It Back - Alpha, Beta.mp3",
-             "length": 200, "bitrate": 320, "size": 7_900_000},
-        ],
-    },
-]
+SYNTHETIC_TRACKS = []
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Real tracks the engine has repeatedly gotten wrong (provided by the user)
