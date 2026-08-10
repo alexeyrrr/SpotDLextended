@@ -49,6 +49,10 @@ def find_top_candidates(self, spotify_title, spotify_artist, spotify_duration_se
 - `query_variant` is required to exist in the signature but must NOT trigger any
   multi-query behavior.
 - `fetch_sockseek_results` must pass `timeout` to `proc.communicate(timeout=...)`.
+- **Flag nuance:** the orchestrator computes `has_inherent_mix` (line ~923) and
+  currently calls the scorer with `get_extended and not has_inherent_mix` (line ~974).
+  `find_top_candidates` must receive and pass through the **already-combined** flag —
+  do NOT combine it inside `find_top_candidates`, or scoring behavior changes.
 
 ### Live-test seam
 `fetch_sockseek_results` and `find_top_candidates` are the intended targets for
@@ -65,21 +69,34 @@ peer-blacklist handling for "Too many files" / country-blocked (lines ~1010-1020
 metadata match check, MP3 spectral 320 check, transcode via ffmpeg, move into place,
 and the success `break`.
 
+Note: `mix_type` already lives on each candidate dict (set by
+`heuristic_filter_and_score`), so it is read per-candidate — no separate mix_type
+argument needed. `folder` is required alongside `target_download_folder` because
+the temp dir is created under `folder` (line ~947) while the final file is moved
+to `target_download_folder` — these differ in `upgrade_extended` mode.
+
 ```python
 @dataclass
 class DownloadAttemptResult:
     status: str            # "success" | "failed"
     filepath: str | None   # final mp3 path on success
     candidate: dict | None # the winning candidate
-    mix_type: str | None
+    mix_type: str | None   # from the winning candidate
 
-def download_from_candidates(self, candidates, target_download_folder,
+def download_from_candidates(self, candidates, folder, target_download_folder,
                              spotify_title, spotify_artist, spotify_uri,
-                             spotify_isrc, mix_type_hint) -> DownloadAttemptResult:
+                             spotify_isrc) -> DownloadAttemptResult:
     """Try each candidate in order; return the first that passes all checks.
     Never raises on per-candidate failure — record and move to the next."""
 ```
 
+- **Per-query attempt cap (in `download_from_candidates`):** `download_from_candidates`
+  owns the `MAX_DOWNLOAD_ATTEMPTS` cap (line ~22, value 6) and applies it to whatever
+  candidate list it receives. Because the orchestrator calls it once per query, the
+  cap is naturally **per query** — each query's candidates get up to 6 download
+  attempts, independent of other queries. This preserves today's single-query behavior
+  exactly (one query → top 6 attempted) and makes the future multi-query loop correct
+  without extra work. `find_top_candidates` returns the **full** ranked list (uncapped).
 - **Critical:** the session peer blacklist (`self.temp_peer_blacklist`) must persist
   across calls — a peer rejected in one attempt stays blacklisted on later calls
   (needed for the future retry loop). Keep blacklisting on `self` or pass it through.
@@ -96,8 +113,10 @@ KEEP unchanged in the orchestrator:
 - Tagging + success sync-history (~1143-1167)
 
 REPLACE the inline search+download body with a single sequential path:
-1. `candidates, query_used = self.find_top_candidates(...)`
-2. `result = self.download_from_candidates(candidates, ...)`
+1. `candidates, query_used = self.find_top_candidates(...)` (pass
+   `get_extended and not has_inherent_mix` as the get_extended arg)
+2. `result = self.download_from_candidates(candidates, folder, ...)` (the
+   `MAX_DOWNLOAD_ATTEMPTS` cap is applied inside, per query)
 3. Existing fallback/finalize logic driven by `result.status`.
 
 To make the future retry loop obvious, define a module-level tuple
