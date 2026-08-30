@@ -155,8 +155,9 @@ class Downloader:
         Filters and scores results based on duration, keywords, formatting, and matches.
         """
         AUDIO_EXTS = {".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a"}
-        extended_kw = ["extended", "original mix", "club mix", "12\"", "12inch", "maxi",
-                       "extended mix", "dj mix", "lp version", "vip"]
+        extended_kw = ["extended", "original mix", "club mix", "club edit", "12\"", "12inch",
+                       "extended mix", "extended version", "extended edit", "original edit",
+                       "lp version", "vip"]
         
         is_remix_target = bool(re.search(r'\bremix\b', spotify_title, flags=re.IGNORECASE))
         core_spot_title = self.normalize_string(
@@ -361,7 +362,8 @@ class Downloader:
         Checks both the filename and the embedded title tag so that re-tagged files are also caught.
         Also returns True if the track duration is over 5 minutes.
         """
-        extended_kw = ["extended", "original", "club mix", "remix"]
+        extended_kw = ["extended", "original", "club mix", "club edit",
+                 "extended version", "extended edit", "original edit", "remix"]
 
         filename_lower = os.path.basename(file_path).lower()
         if any(kw in filename_lower for kw in extended_kw):
