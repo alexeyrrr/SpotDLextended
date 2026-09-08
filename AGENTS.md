@@ -44,7 +44,7 @@ After `git pull`, run `source .venv/bin/activate && pip install -e .` to pick up
 ## Important details
 - `settings.json` is gitignored — don't commit it
 - Sync history: `.sync_history.json` in each playlist folder tracks previous downloads; standard mixes get a 14-day cooldown before retry
-- Peer blacklist: peers that reject transfers (queue full, country block) are blacklisted per session via `self.temp_peer_blacklist`
+- Peer blacklist: peers rejected by exact sockseek strings ("Too many files", "country blocked") are banned instantly per session via `self.temp_peer_blacklist`; generic transfer failures (non-zero exit like stale downloads, or empty temp dir) count via `_note_peer_failure` and ban after `PEER_FAIL_BAN_THRESHOLD = 2` consecutive failures. Counter resets once the peer delivers bytes. Blacklist is checked both when building candidates and inside the download attempts loop.
 - WSL path translation: `C:/...` → `/mnt/c/...` for native Linux sockseek; reverse for m3u8/XML
 - `archive_orphaned_files()` moves files removed from the Spotify playlist into an `Archived/` subfolder
 - MP3 spectral verification checks for 16kHz/18.5kHz brickwall cutoffs to reject fake 320kbps

@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 # Maximum candidates to attempt downloading per query (keeps things moving)
 MAX_DOWNLOAD_ATTEMPTS = 6
 
+# Consecutive transfer failures by one peer before it's banned for the session
+PEER_FAIL_BAN_THRESHOLD = 2
+
 # Loose duration tolerance (seconds) for initial pre-filtering
 DURATION_TOLERANCE_SECS = 60
 
@@ -42,6 +45,7 @@ class Downloader:
         self.sockseek_path = self.get_sockseek_path()
         self.debug = debug
         self.temp_peer_blacklist = set()
+        self.peer_fail_count = {}
 
     def _get_sync_history_path(self, folder):
         if not folder or not os.path.isdir(folder):
@@ -1184,6 +1188,16 @@ class Downloader:
             merged, spotify_title, spotify_artist, spotify_duration_secs, get_extended
         ), used_query
 
+    def _note_peer_failure(self, username):
+        """Count consecutive transfer failures per peer; ban for the session at threshold."""
+        self.peer_fail_count[username] = self.peer_fail_count.get(username, 0) + 1
+        if self.peer_fail_count[username] >= PEER_FAIL_BAN_THRESHOLD:
+            logger.warning(
+                f"  [⚠] Blacklisted peer '{username}' for this session: "
+                f"{self.peer_fail_count[username]} consecutive failed transfers."
+            )
+            self.temp_peer_blacklist.add(username)
+
     def download_from_candidates(self, candidates, folder, target_download_folder,
                                  spotify_title, spotify_artist, spotify_uri,
                                  spotify_isrc) -> DownloadAttemptResult:
@@ -1202,6 +1216,8 @@ class Downloader:
         attempts = [(c, c['mix_type']) for c in candidates][:MAX_DOWNLOAD_ATTEMPTS]
 
         for c, mix_type in attempts:
+            if c['username'] in self.temp_peer_blacklist:
+                continue
             logger.info(
                 f"  [⬇] {c['username']} → {os.path.basename(c['filename'])} "
                 f"(Score: {c['score']}, {c['length']}s, {c['bitrate'] or '?'}kbps, {c['ext']})"
@@ -1245,6 +1261,7 @@ class Downloader:
                     raise subprocess.CalledProcessError(res.returncode, cmd, output=stdout_dl, stderr=stderr_dl)
             except Exception as e:
                 logger.warning(f"  [⚠] Download failed: {e}")
+                self._note_peer_failure(c['username'])
                 continue
 
             dl_files = [
@@ -1253,9 +1270,11 @@ class Downloader:
             ]
             if not dl_files:
                 logger.warning("  [⚠] No file in temp dir after download.")
+                self._note_peer_failure(c['username'])
                 continue
 
             dl_file = os.path.join(temp_dir, dl_files[0])
+            self.peer_fail_count.pop(c['username'], None)
             ext = os.path.splitext(dl_file)[1].lower()
 
             # ── Metadata verification (primary check) ─────────────────────
