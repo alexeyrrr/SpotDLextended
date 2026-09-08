@@ -4,7 +4,8 @@
 Downloads Spotify playlist tracks as 320kbps MP3 via Soulseek P2P (`sockseek`). Generates `.m3u8` playlists and `rekordbox.xml`. Entrypoint: `spotdlextended/__main__.py:main()`.
 
 ## Commands
-- `pip install -e .` — dev install
+- `python3 -m venv .venv && source .venv/bin/activate && pip install -e .` — dev install (use `.venv`, never install globally)
+- `pytest` — run tests (use `.venv/bin/pytest`)
 - `spotdlextended -u <URL>` — download a playlist
 - `spotdlextended -u <URL> --debug` — verbose mode (also passed to sockseek)
 - `spotdlextended -p -u <URL>` — playlist-only (no downloads)
@@ -30,13 +31,15 @@ Tracks can end up duplicated across playlist folders because:
 2. The original implementation used `get_primary_artist` (first artist only) instead of `normalize_all_artists` — this was fixed on July 11
 3. The `playlist_only` flag was dead code (passed to `download_track` but never checked) until it was fixed in the current session — it now correctly skips downloads in playlist-only mode
 
-After `git pull`, run `pip install -e .` to pick up library search improvements.
+After `git pull`, run `source .venv/bin/activate && pip install -e .` to pick up library search improvements.
 
-## Tests (known failing — intentional)
-- Run with `pip install -e ".[dev]"` then `python -m pytest`
-- `tests/` contains scorer + download-flow decision tests seeded with real tracks (`tests/track_fixtures.py`) the engine got wrong:
-  - `heuristic_filter_and_score` labels any candidate ≥30s longer than the spotify duration as "Extended Mix" (+1000) and treats `dj mix`/`club mix` as extended keywords (+500) — so DJ-set excerpts outrank genuine extended mixes
-  - The suite is **expected to fail** until the scorer is fixed (see `tests/test_scorer.py`, `tests/test_download_flow.py`)
+## Tests
+- Run with `source .venv/bin/activate && pytest`
+- `tests/` contains scorer + download-flow + search-query decision tests seeded with real tracks (`tests/track_fixtures.py`) the engine got wrong:
+  - `build_search_queries` (downloader.py:1096-1124) returns 3 variants: full-artists, last-artist, primary-only. `find_top_candidates` tries them in order; first with hits wins.
+  - `heuristic_filter_and_score` labels any candidate ≥30s longer than the spotify duration as "Extended Mix" (+1000) and treats `dj mix`/`club mix` as extended keywords (+500)
+  - Hard-disqualify keywords (downloader.py:209) are a one-line tuple: `("mixed", "live")`. Add new ones there.
+  - `tags_match_spotify` accepts partial-artist matches (tag artists are a subset of spotify artists) — confirmed by user as acceptable
 
 ## Important details
 - `settings.json` is gitignored — don't commit it

@@ -3,7 +3,7 @@
 Capture live Soulseek search results for the tracks in track_fixtures.py.
 
 For each track it runs the SAME query the engine would build (via
-Downloader.build_search_query) through sockseek, saves the raw results to
+Downloader.build_search_queries) through sockseek, saves the raw results to
 tests/fixtures/<slug>.json, and prints the heuristic's ranking so the scorer
 can be inspected and refined against real data.
 
@@ -69,30 +69,47 @@ def capture_one(downloader, track, outdir, timeout):
     title, artist = track["title"], track["artist"]
     duration_secs = track.get("duration_secs", 0)
 
-    query = downloader.build_search_query(title, artist)
+    queries = downloader.build_search_queries(title, artist)
     print(f"\n{'=' * 70}")
     print(f"[{title}] — {artist}  (dur ~{duration_secs}s)")
-    print(f"  query: '{query}'")
 
-    results = downloader.fetch_sockseek_results(query, timeout=timeout)
+    # Mirror find_top_candidates: try variants in order, merge+dedupe until
+    # the first variant that has hits.
+    seen = set()
+    merged = []
+    query_used = None
+    for query in queries:
+        print(f"  query: '{query}'")
+        results = downloader.fetch_sockseek_results(query, timeout=timeout)
+        for r in results:
+            for f in r.get("Files", []):
+                key = (r.get("User", {}).get("Username"), f.get("Filename"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(r)
+        if merged:
+            query_used = query
+            break
 
-    if not results:
+    if not merged:
         print("  [!] no results returned (search failed or nothing found)")
         return None
 
-    n_files = sum(1 for _ in flatten_files(results))
-    print(f"  raw results: {len(results)} users / {n_files} files")
+    n_files = sum(1 for _ in flatten_files(merged))
+    print(f"  raw results: {len(merged)} users / {n_files} files")
 
     # What the heuristic keeps and how it ranks it.
     ranked = downloader.heuristic_filter_and_score(
-        results, title, artist, duration_secs, get_extended=True
+        merged, title, artist, duration_secs, get_extended=True
     )
     print(f"  heuristic kept: {len(ranked)} / {n_files}")
 
     payload = {
         "track": {"title": title, "artist": artist, "duration_secs": duration_secs},
-        "query": query,
-        "results": results,
+        "queries": queries,
+        "query_used": query_used,
+        "results": merged,
     }
     if outdir:
         outdir.mkdir(parents=True, exist_ok=True)

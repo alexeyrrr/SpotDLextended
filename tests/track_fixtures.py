@@ -32,69 +32,25 @@ SYNTHETIC_TRACKS = []
 # ─────────────────────────────────────────────────────────────────────────────
 REAL_TRACKS = [
     {
-        "title": "Are You The Same",
-        "artist": "Kyle Watson, Body Ocean",
-        "duration_secs": 161,  # TODO confirm real spotify duration
-        "remix_target": False,
-        "note": "script reports no extended mix, but it exists on Soulseek",
-        "candidates": [
-
-        ],
-    },
-    {
-        "title": "Don't Fix Me",
-        "artist": "April Girl, RYVM",
-        "duration_secs": 154, 
-        "remix_target": False,
-        "note": "nothing downloaded at all, but it's easily downloadable manually",
-        "candidates": [
-        ],
-    },
-    {
-        "title": "What's A Girl To Do (Yuvèe Remix)",
-        "artist": "Luvstruck, Yuvèe",
-        "duration_secs": 174, 
+        "title": "THE FUTURE - Notre Dame Remix - Edit",
+        "artist": "Ankhoi, Luch, Notre Dame",
+        "duration_secs": 320,
         "remix_target": True,
-        "note": "extended mix not found; correct edition is the 5m56s FLAC (356s)",
+        "note": "3-artist collab with Notre Dame as remixer; was failing because primary-artist-only query dropped Luch + Notre Dame",
+        "correct": "Ankhoi, Luch, Notre Dame - THE FUTURE (Notre Dame Remix Edit).mp3",
         "candidates": [
-        ],
-    },
-    {
-        "title": "Do Nothing",
-        "artist": "trillbot",
-        "duration_secs": 147,  
-        "remix_target": False,
-        "note": "nothing downloaded at all, but it's easily downloadable manually",
-        "candidates": [
-        ],
-    },
-        {
-        "title": "1st Thing",
-        "artist": "Tonii Boii, Bigga Rankin",
-        "duration_secs": 147,  
-        "remix_target": False,
-        "note": "nothing downloaded at all, but it's easily downloadable manually",
-        "candidates": [
-
-        ],
-    },    
-    {
-        "title": "on my mind v2(vacay mode)",
-        "artist": "abelon",
-        "duration_secs": 175,  
-        "remix_target": False,
-        "note": "nothing downloaded at all, but it's easily downloadable manually",
-        "candidates": [
-
-        ],
-    },   
-    {
-        "title": "My Vibe",
-        "artist": "Hutcher, Alyzée",
-        "duration_secs": 161,  
-        "remix_target": False,
-        "note": "correct extended exists on Soulseek credited to a different artist: 'Hutcher, Honey - My Vibe (Extended Mix)'",
-        "candidates": [
+            {"role": "correct_extended",
+             "filename": "Ankhoi, Luch, Notre Dame - THE FUTURE (Notre Dame Remix Edit).mp3",
+             "length": 318, "size": 9_000_000, "bitrate": 320},
+            {"role": "correct_extended",
+             "filename": "Notre Dame - THE FUTURE (Remix).mp3",
+             "length": 320, "size": 9_000_000, "bitrate": 320},
+            {"role": "wrong",
+             "filename": "Skrillex - Bangarang.mp3",
+             "length": 230, "size": 8_000_000, "bitrate": 320},
+            {"role": "set_excerpt",
+             "filename": "DJ Set 2024 - THE FUTURE (Continuous Mixed).mp3",
+             "length": 3600, "size": 50_000_000, "bitrate": 320},
         ],
     },
 ]

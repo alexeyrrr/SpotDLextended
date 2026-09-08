@@ -22,10 +22,6 @@ logger = logging.getLogger(__name__)
 # Maximum candidates to attempt downloading per query (keeps things moving)
 MAX_DOWNLOAD_ATTEMPTS = 6
 
-# Query variants tried in order; only "default" is used for now. The retry loop
-# in download_track iterates this once multi-query support is added.
-QUERY_VARIANTS = ("default",)
-
 # Loose duration tolerance (seconds) for initial pre-filtering
 DURATION_TOLERANCE_SECS = 60
 
@@ -206,23 +202,33 @@ class Downloader:
                 if is_remix_target and not has_remix_in_file:
                     continue
                 
-                # Hard Pre-mixed Filter
-                # Eliminates tracks that are part of a continuous DJ mix
-                if re.search(r'\bmixed\b', filename, flags=re.IGNORECASE):
+                # Hard Pre-mixed Filter — eliminates tracks that are part of a
+                # continuous DJ mix (DJ set rips), live recordings, etc. Word
+                # boundary avoids false matches ("Olivia" vs "live", "alive" vs "live").
+                # ponytail: add new hard-reject keywords here, one tuple, no extra regex.
+                if any(re.search(rf'(?i)\b{kw}', filename) for kw in ("mixed", "live")):
                     continue
                 
                 score = 0
                 
                 # Fuzzy match title and artist (Bonus)
-                base = os.path.splitext(os.path.basename(filename))[0]
+                # ponytail: Windows peers report backslash paths — basename()
+                # only splits on the host separator, so normalize first.
+                base = os.path.splitext(
+                    os.path.basename(filename.replace('\\', '/'))
+                )[0]
                 norm_full_path = self.normalize_string(base.replace('-', ' '))
                 artist_score = fuzz.token_set_ratio(norm_spot_artist, norm_full_path)
                 title_score = fuzz.token_set_ratio(core_spot_title, norm_full_path)
                 
-                if artist_score > 80 and title_score > 80:
+                if artist_score > 75 and title_score > 75:
                     score += 100
-                elif artist_score > 70 and title_score > 70:
+                elif artist_score > 60 and title_score > 60:
                     score += 50
+                # ponytail: floor — any Spotify artist token in path nudges score up.
+                # Helps partial-credit files (e.g., only "Notre Dame" in filename) clear zero.
+                if any(tok in norm_full_path.split() for tok in norm_spot_artist.split()):
+                    score += 20
                     
                 diff = length - spotify_duration_secs
                 
@@ -237,11 +243,15 @@ class Downloader:
                     score -= 100
                 
                 mix_type = "Standard"
-                if get_extended:
+                # ponytail: length/keyword "extended" bonuses gated behind a
+                # plausible title match — a different song on the same release
+                # (e.g. 'Keep Rollin' inside an 'Up Down Jumper' folder) must
+                # not win on length alone. Raise/lower the 60 floor if needed.
+                if get_extended and title_score > 60:
                     if diff >= 30:
                         score += 1000
                         mix_type = "Extended Mix"
-                    
+
                     if has_extended_kw:
                         score += 500
                 
@@ -493,8 +503,16 @@ class Downloader:
                 f"title='{tag_title}' ({title_score})"
             )
 
-            if artist_score >= 75 and title_score >= 70:
-                return True, f"Tag match (artist={artist_score}, title={title_score})"
+            tag_tokens = set(norm_tag_artist.split())
+            spot_tokens = set(norm_spot_artist.split())
+            is_subset = bool(tag_tokens) and tag_tokens.issubset(spot_tokens)
+
+            if (artist_score >= 75 and title_score >= 70) or \
+               (is_subset and title_score >= 70 and artist_score >= 50):
+                return True, (
+                    f"Tag match (artist={artist_score}, title={title_score}"
+                    f"{', partial artist' if is_subset else ''})"
+                )
             else:
                 return False, f"Tag mismatch (artist={artist_score}, title={title_score})"
 
@@ -943,20 +961,15 @@ class Downloader:
 
         temp_dir = os.path.join(folder, ".tmp_download")
 
-        # ── Search + download (single query for now; retry loop goes here) ──
-        result = DownloadAttemptResult("failed", None, None, None)
-        for query in QUERY_VARIANTS:
-            candidates, _ = self.find_top_candidates(
-                spotify_title, spotify_artist, spotify_secs,
-                get_extended and not has_inherent_mix,
-                query_variant=query,
-            )
-            result = self.download_from_candidates(
-                candidates, folder, target_download_folder,
-                spotify_title, spotify_artist, spotify_uri, spotify_isrc
-            )
-            if result.status == "success":
-                break
+        # ── Search + download (variants iterated inside find_top_candidates) ──
+        candidates, _ = self.find_top_candidates(
+            spotify_title, spotify_artist, spotify_secs,
+            get_extended and not has_inherent_mix,
+        )
+        result = self.download_from_candidates(
+            candidates, folder, target_download_folder,
+            spotify_title, spotify_artist, spotify_uri, spotify_isrc
+        )
 
         downloaded_filepath = result.filepath
         success_candidate = result.candidate
@@ -1088,50 +1101,73 @@ class Downloader:
             logger.error(f"  [❌] Search failed: {e}")
             return []
 
-    def build_search_query(self, spotify_title, spotify_artist):
+    def build_search_queries(self, spotify_title, spotify_artist) -> list[str]:
         """
-        Build the single broad search query string used for a track.
-        Strips parentheticals (...) and [...] from artist and title except
-        remix-containing groups, then removes blacklist words.
+        Build an ordered list of search query variants for a track.
+        - Variant 0: all Spotify artists joined + title (broadest)
+        - Variant 1: last artist only + title (often the remixer on collab remixes)
+        - Variant 2: primary (first) artist + title (fallback)
+
+        Mix-keyword suffixes (extended/club/remix/edit/...) are stripped from
+        the *query* so the candidate pool stays broad; the hard remix filter
+        inside heuristic_filter_and_score enforces the strict mix type.
         """
-        primary_artist = self.get_primary_artist(spotify_artist)
-        clean_title = re.sub(
-            r'\s*[\(\[][^\)\]]*[\)\]]',
-            lambda m: m.group(0) if re.search(r'\bremix\b', m.group(0), re.IGNORECASE) else '',
-            spotify_title
-        ).strip()
-        clean_artist = re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', primary_artist).strip()
-        logger.info(f"  [🔍] Clean search terms — artist: '{clean_artist}', title: '{clean_title}'")
-        raw_query = f"{clean_artist} {clean_title}".replace("-", " ")
-        search_query = raw_query
-        for word in self.search_blacklist:
-            search_query = re.sub(rf'\b{re.escape(word)}\b', '', search_query, flags=re.IGNORECASE)
-        return " ".join(search_query.split())
+        all_artists = self.normalize_all_artists(spotify_artist)
+        primary = self.get_primary_artist(spotify_artist)
+        # Last artist name (not last token) — "Notre Dame" is two tokens, but
+        # all_artists.split()[-1] would give just "dame" and miss remixers.
+        last = (
+            " ".join(all_artists.split()[len(primary.split()):]).strip()
+            if primary else all_artists
+        ) or primary
+
+        stripped_title = re.sub(
+            r'(?i)\b(extended|original|club|mix|edit|remix|remixed|vip)\b',
+            ' ', spotify_title
+        )
+        clean_title = self.normalize_string(
+            re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', stripped_title)
+        )
+        clean_artists = self.normalize_string(all_artists)
+        variants = [
+            f"{clean_artists} {clean_title}",  # full / broadest
+            f"{last} {clean_title}",           # last / remixer-focused
+            f"{primary} {clean_title}",         # primary fallback
+        ]
+        # Single artist → all variants collapse to the same string; don't
+        # hammer sockseek with the identical query 3×.
+        return list(dict.fromkeys(variants))
 
     def find_top_candidates(self, spotify_title, spotify_artist, spotify_duration_secs,
-                            get_extended, query_variant=None, timeout=None):
+                            get_extended, timeout=60):
         """
-        Build a query, fetch sockseek results, and score them via
-        heuristic_filter_and_score.
-
-        Returns (ranked_candidates, query_used). query_variant exists so the
-        orchestrator can later retry with different query strings; for now it is
-        ignored (single default query). On search failure returns ([], query_used).
-        timeout is passed through to fetch_sockseek_results.
+        Try query variants in order; first variant with hits wins. Dedupes
+        (peer, filename) across variants, then runs heuristic_filter_and_score
+        once on the merged pool. Returns (ranked_candidates, query_used).
+        On search failure returns ([], first_query).
         """
-        search_query = self.build_search_query(spotify_title, spotify_artist)
-        logger.info(f"  [🔍] Query: '{search_query}'")
-
-        results = self.fetch_sockseek_results(search_query, timeout=timeout)
-
-        ranked_candidates = self.heuristic_filter_and_score(
-            results, spotify_title, spotify_artist, spotify_duration_secs, get_extended
-        )
-
-        if not ranked_candidates:
-            logger.debug(f"  [!] No candidates passed heuristic filter for query: '{search_query}'")
-
-        return ranked_candidates, search_query
+        queries = self.build_search_queries(spotify_title, spotify_artist)
+        seen = set()
+        merged = []
+        used_query = None
+        for q in queries:
+            logger.info(f"  [🔍] Query: '{q}'")
+            results = self.fetch_sockseek_results(q, timeout=timeout)
+            for r in results:
+                for f in r.get("Files", []):
+                    key = (r.get("User", {}).get("Username"), f.get("Filename"))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    merged.append(r)
+            if merged:
+                used_query = q
+                break
+        if not merged:
+            return [], queries[0]
+        return self.heuristic_filter_and_score(
+            merged, spotify_title, spotify_artist, spotify_duration_secs, get_extended
+        ), used_query
 
     def download_from_candidates(self, candidates, folder, target_download_folder,
                                  spotify_title, spotify_artist, spotify_uri,

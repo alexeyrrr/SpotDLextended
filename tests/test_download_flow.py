@@ -27,7 +27,7 @@ class _FakePopen:
     def __init__(self, payload):
         self._payload = payload
 
-    def communicate(self):
+    def communicate(self, timeout=None):
         return self._payload, ""
 
 
