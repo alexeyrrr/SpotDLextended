@@ -36,8 +36,8 @@ After `git pull`, run `source .venv/bin/activate && pip install -e .` to pick up
 ## Tests
 - Run with `source .venv/bin/activate && pytest`
 - `tests/` contains scorer + download-flow + search-query decision tests seeded with real tracks (`tests/track_fixtures.py`) the engine got wrong:
-  - `build_search_queries` (downloader.py:1096-1124) returns 3 variants: full-artists, last-artist, primary-only. `find_top_candidates` tries them in order; first with hits wins.
-  - `heuristic_filter_and_score` labels any candidate ≥30s longer than the spotify duration as "Extended Mix" (+1000) and treats `dj mix`/`club mix` as extended keywords (+500)
+  - `build_search_queries` (downloader.py:1119) returns 3 variants: full-artists, last-artist, primary-only; single-artist tracks dedupe to 1 query. `find_top_candidates` tries them in order; first with hits wins.
+  - `heuristic_filter_and_score` labels any candidate ≥30s longer than the spotify duration as "Extended Mix" (+1000) and treats `dj mix`/`club mix` as extended keywords (+500) — but **only when the title plausibly matches** (`title_score > 60`) and the filename has no foreign leftover tokens (e.g. a different song like "Keep Rollin" inside an "Up Down Jumper" folder). Windows-peer backslash paths are normalized before `basename()` so folder names can't inflate the title match; `&` is stripped by `normalize_string`.
   - Hard-disqualify keywords (downloader.py:209) are a one-line tuple: `("mixed", "live")`. Add new ones there.
   - `tags_match_spotify` accepts partial-artist matches (tag artists are a subset of spotify artists) — confirmed by user as acceptable
 

@@ -105,7 +105,7 @@ class Downloader:
         if not s:
             return ""
         s = unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8')
-        s = re.sub(r'[(){}\[\]!?,;:\-]', " ", s)
+        s = re.sub(r'[(){}\[\]!?,;:&\-]', " ", s)
         return " ".join(s.lower().split())
 
     @staticmethod
@@ -248,12 +248,27 @@ class Downloader:
                 # (e.g. 'Keep Rollin' inside an 'Up Down Jumper' folder) must
                 # not win on length alone. Raise/lower the 60 floor if needed.
                 if get_extended and title_score > 60:
-                    if diff >= 30:
-                        score += 1000
-                        mix_type = "Extended Mix"
+                    # Leftover-token guard: tokens in the filename that aren't
+                    # explained by artist, title, numbers, or version words mean
+                    # the file is a *different song* (e.g. "02 - Keep Rollin"
+                    # with the EP title embedded). No extended bonus for those.
+                    version_words = {
+                        "extended", "original", "club", "edit", "remix",
+                        "remixed", "vip", "radio", "clean", "dirty", "intro",
+                        "version", "lp", "mix", "12", "12inch", "edit",
+                    }
+                    tokens = set(norm_full_path.split())
+                    explained = set(norm_spot_artist.split()) | \
+                        set(core_spot_title.split()) | version_words
+                    foreign = [t for t in tokens
+                               if t not in explained and not any(c.isdigit() for c in t)]
+                    if not foreign:
+                        if diff >= 30:
+                            score += 1000
+                            mix_type = "Extended Mix"
 
-                    if has_extended_kw:
-                        score += 500
+                        if has_extended_kw:
+                            score += 500
                 
                 if abs(diff) <= 5:
                     score += 50
